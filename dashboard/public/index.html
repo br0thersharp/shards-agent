@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chibi Agent Dashboard</title>
+<style>
+  :root {
+    --bg-primary: #0a0a0f;
+    --bg-panel: #0d0d14;
+    --bg-inset: #08080c;
+    --green: #00ff41;
+    --green-dim: #003d10;
+    --green-glow: 0 0 6px #00ff41;
+    --amber: #ffb800;
+    --amber-dim: #3d2e00;
+    --amber-glow: 0 0 6px #ffb800;
+    --red: #ff2d2d;
+    --red-dim: #3d0a0a;
+    --red-glow: 0 0 6px #ff2d2d;
+    --text-primary: #c8ccd0;
+    --text-dim: #4a4e58;
+    --text-label: #3a3e48;
+    --border: #1a1a24;
+    --border-dim: #12121a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Courier New', Consolas, monospace;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0, 255, 65, 0.015) 2px, rgba(0, 255, 65, 0.015) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.4) 100%);
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  .dashboard {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr;
+    grid-template-rows: 36px auto 1fr 1fr 38px;
+    grid-template-areas:
+      "header  header  header"
+      "debrief debrief debrief"
+      "sidebar board   feed"
+      "sidebar comms   notes"
+      "coach   coach   coach";
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ─── HEADER ─── */
+  .header {
+    grid-area: header;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--green-dim);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 10px;
+    height: 36px;
+  }
+
+  .header h1 { font-size: 11px; color: var(--green); text-shadow: var(--green-glow); letter-spacing: 2px; text-transform: uppercase; }
+
+  .state-badge { font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; padding: 2px 8px; border: 1px solid; }
+  .state-idle { color: var(--green); border-color: var(--green-dim); }
+  .state-queue { color: var(--amber); border-color: var(--amber-dim); }
+  .state-combat { color: var(--red); border-color: var(--red-dim); }
+  .state-debrief { color: var(--amber); border-color: var(--amber-dim); }
+
+  .header-readouts { display: flex; gap: 14px; align-items: center; margin-left: 8px; }
+  .readout { display: flex; align-items: baseline; gap: 4px; }
+  .readout-label { font-size: 8px; color: var(--text-label); text-transform: uppercase; letter-spacing: 2px; }
+  .readout-value { font-size: 12px; font-weight: bold; color: var(--text-primary); }
+  .readout-value.elo { color: var(--green); text-shadow: var(--green-glow); }
+  .header-controls { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .header-btn { background: transparent; border: 1px solid; font-family: 'Courier New', Consolas, monospace; font-size: 9px; font-weight: bold; padding: 3px 10px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: background 0.15s; }
+  .header-btn:hover { background: rgba(255,255,255,0.05); }
+
+  /* ─── DEBRIEF BANNER ─── */
+  .debrief-banner { grid-area: debrief; display: none; background: linear-gradient(90deg, var(--bg-primary), var(--amber-dim), var(--bg-primary)); padding: 5px 20px; text-align: center; font-size: 10px; font-weight: bold; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; border-bottom: 1px solid var(--amber-dim); }
+  body.debrief-mode .debrief-banner { display: block; }
+  body.debrief-mode .header { border-bottom-color: var(--amber-dim); }
+  body.debrief-mode .header h1 { color: var(--amber); text-shadow: var(--amber-glow); }
+  body.debrief-mode .coach-box { border-top: 2px solid var(--amber); background: #0f0d08; box-shadow: 0 -4px 20px rgba(255, 184, 0, 0.15); }
+  body.debrief-mode .coach-box input { border-color: var(--amber-dim); background: #1a1508; }
+  body.debrief-mode .coach-box input:focus { border-color: var(--amber); box-shadow: 0 0 8px rgba(255, 184, 0, 0.2); }
+  body.debrief-mode .coach-box button { background: var(--amber); color: var(--bg-primary); border-color: var(--amber); }
+  @keyframes debrief-arrow-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  body.debrief-mode .coach-box .coach-prompt { animation: debrief-arrow-pulse 1.5s infinite; }
+  @keyframes debrief-border-pulse { 0%, 100% { border-color: var(--amber-dim); } 50% { border-color: var(--amber); } }
+  body.debrief-mode .coach-box { animation: debrief-border-pulse 2s infinite; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    grid-area: sidebar;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .blob-wrap { width: 200px; height: 160px; position: relative; flex-shrink: 0; overflow: visible; z-index: 10; }
+  #blobCanvas { width: 100%; height: 100%; }
+
+  .sidebar-stats { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .sidebar-section-title { font-size: 9px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; padding-bottom: 3px; border-bottom: 1px solid var(--border); margin-top: 2px; }
+  .sidebar-row { display: flex; justify-content: space-between; align-items: center; padding: 1px 0; }
+  .sidebar-label { font-size: 8px; color: var(--text-label); text-transform: uppercase; letter-spacing: 2px; }
+  .sidebar-value { font-size: 11px; font-weight: bold; color: var(--text-primary); }
+  .campaign-bar { background: var(--bg-inset); height: 4px; margin-top: 2px; overflow: hidden; }
+  .campaign-bar-fill { background: var(--green); height: 100%; transition: width 0.5s ease; }
+
+  /* W/L Graph */
+  .wl-graph-area { padding: 6px 10px; flex: 1; min-height: 80px; }
+  .wl-graph-area .sidebar-section-title { margin-bottom: 4px; }
+  .wl-graph-canvas { width: 100%; height: 100%; min-height: 60px; }
+
+  /* ─── BOARD AREA ─── */
+  .board-area {
+    grid-area: board;
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border);
+    padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .combat-board h2, .bda-card h2 { font-size: 10px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+  .combat-board h2 { color: var(--red); }
+  .board-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .opponent-name { color: var(--red); font-weight: bold; font-size: 13px; text-shadow: var(--red-glow); }
+  .turn-info { color: var(--text-dim); font-size: 11px; }
+  .player-row { padding: 8px 10px; background: var(--bg-inset); margin-bottom: 6px; border-left: 3px solid var(--text-dim); }
+  .player-row.me { border-left-color: var(--green); }
+  .player-row.op { border-left-color: var(--red); }
+  .player-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .player-name { font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; }
+  .player-row.me .player-name { color: var(--green); }
+  .player-row.op .player-name { color: var(--red); }
+  .player-stats { display: flex; gap: 12px; font-size: 11px; color: var(--text-dim); }
+  .hp-display { display: flex; align-items: center; gap: 6px; }
+  .hp-number { font-weight: bold; font-size: 16px; }
+  .player-row.me .hp-number { color: var(--green); text-shadow: var(--green-glow); }
+  .player-row.op .hp-number { color: var(--red); text-shadow: var(--red-glow); }
+  .hp-bar { width: 80px; height: 3px; background: var(--border); overflow: hidden; }
+  .hp-bar-fill { height: 100%; transition: width 0.3s ease; }
+  .player-row.me .hp-bar-fill { background: var(--green); }
+  .player-row.op .hp-bar-fill { background: var(--red); }
+  .timeout-badge { font-size: 10px; padding: 1px 6px; border: 1px solid var(--border); color: var(--text-dim); }
+  .timeout-badge.warn { color: var(--amber); border-color: var(--amber-dim); }
+  .timeout-badge.danger { color: var(--red); border-color: var(--red-dim); }
+  .match-creatures { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .creature-tag { background: var(--bg-panel); border: 1px solid var(--border); padding: 2px 6px; font-size: 10px; color: var(--text-primary); white-space: nowrap; display: flex; align-items: center; gap: 3px; }
+  .creature-tag .c-name { color: var(--text-primary); }
+  .creature-tag .c-stats { color: var(--green); font-weight: bold; }
+  .creature-tag.tapped { opacity: 0.4; border-style: dashed; }
+  .creature-tag.face-down { color: var(--text-dim); border-color: var(--text-dim); }
+  .match-divider { border-top: 1px dashed var(--border); margin: 4px 0; text-align: center; position: relative; }
+  .match-divider span { background: var(--bg-primary); padding: 0 8px; font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; position: relative; top: -8px; }
+  .match-waiting { color: var(--amber); font-size: 11px; margin-top: 6px; text-align: center; }
+  .queue-display { text-align: center; padding: 30px 20px; }
+  .queue-display .timer { font-size: 32px; font-weight: bold; color: var(--amber); text-shadow: var(--amber-glow); }
+  @keyframes search-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  .queue-display .searching { color: var(--amber); font-size: 11px; margin-bottom: 12px; animation: search-pulse 1.5s infinite; text-transform: uppercase; letter-spacing: 2px; }
+  .bda-card { background: var(--bg-panel); border: 1px solid var(--border); padding: 12px; }
+  .bda-card .bda-line { padding: 4px 0; font-size: 12px; line-height: 1.5; color: var(--text-primary); border-bottom: 1px solid var(--border-dim); }
+  .bda-card .bda-line:last-child { border-bottom: none; }
+  .bda-card .bda-result { color: var(--green); font-weight: bold; font-size: 13px; }
+  .bda-card .bda-result.loss { color: var(--red); }
+  .bda-card .bda-label { color: var(--text-label); font-size: 8px; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 2px; }
+  .idle-hint { text-align: center; color: var(--text-dim); font-size: 11px; padding: 30px 20px; text-transform: uppercase; letter-spacing: 2px; }
+
+  /* ─── FEED (right column, top half) ─── */
+  .feed-area {
+    grid-area: feed;
+    background: var(--bg-panel);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .feed-area h3 { font-size: 9px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; padding: 8px 10px 6px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .feed-scroll { flex: 1; overflow-y: auto; padding: 4px 10px; display: flex; flex-direction: column; }
+  .feed-entry { padding: 3px 0; font-size: 11px; border-bottom: 1px solid var(--border-dim); line-height: 1.4; }
+  .feed-entry.taunt { color: var(--amber); }
+  .feed-entry.taunt::before { content: '> '; color: var(--green); }
+  .feed-entry.action { color: var(--text-primary); }
+  .feed-entry.action::before { content: '> '; color: var(--green); }
+  .feed-entry.result { font-weight: bold; }
+  .feed-entry.result.win { color: var(--green); }
+  .feed-entry.result.loss { color: var(--red); }
+  .feed-entry.assessment { color: var(--amber); }
+  .feed-entry.assessment::before { content: '[ODDS] '; color: var(--amber); font-weight: bold; }
+  .feed-entry.play { color: var(--green); }
+  .feed-entry.play::before { content: '[PLAY] '; color: var(--green); font-weight: bold; }
+  .feed-entry.reaction { color: var(--amber); }
+  .feed-entry.reaction::before { content: '[REACT] '; color: var(--amber); font-weight: bold; }
+  .feed-entry.hype { color: var(--red); }
+  .feed-entry.hype::before { content: '[HYPE] '; color: var(--red); font-weight: bold; }
+  .feed-entry.debrief { color: var(--amber); background: rgba(255, 184, 0, 0.05); padding: 3px 6px; }
+  .feed-entry.debrief::before { content: '[DEBRIEF] '; color: var(--amber); font-weight: bold; }
+  .feed-entry.reply { color: var(--green); background: rgba(0, 255, 65, 0.05); padding: 3px 6px; border-left: 2px solid var(--green); }
+  .feed-entry.reply::before { content: '[HHR→COACH] '; color: var(--green); font-weight: bold; }
+  .feed-entry.coach { color: var(--green); background: rgba(0, 255, 65, 0.05); padding: 3px 6px; border-left: 2px solid var(--green); }
+  .feed-entry.coach::before { content: 'YOU: '; color: var(--green); font-weight: bold; }
+  .feed-entry.alert { color: var(--red); background: rgba(255, 45, 45, 0.1); padding: 3px 6px; font-weight: bold; border-left: 2px solid var(--red); }
+  .feed-entry.alert::before { content: '[ALERT] '; color: var(--red); font-weight: bold; }
+
+  /* ─── RATE LIMIT BANNER ─── */
+  .rate-limit-banner { display: none; background: linear-gradient(90deg, var(--bg-primary), var(--red-dim), var(--bg-primary)); padding: 5px 20px; text-align: center; font-size: 10px; font-weight: bold; color: var(--red); letter-spacing: 3px; text-transform: uppercase; border-bottom: 1px solid var(--red-dim); text-shadow: var(--red-glow); }
+  body.rate-limited .rate-limit-banner { display: block; }
+  @keyframes rate-limit-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+  body.rate-limited .rate-limit-banner { animation: rate-limit-pulse 2s infinite; }
+  body.rate-limited .header { border-bottom-color: var(--red-dim); }
+  body.rate-limited .header h1 { color: var(--red); text-shadow: var(--red-glow); }
+
+  /* ─── COMMS (center bottom — coach message log) ─── */
+  .comms-area {
+    grid-area: comms;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .comms-area h3 { font-size: 9px; color: var(--amber); text-transform: uppercase; letter-spacing: 3px; padding: 8px 10px 6px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .comms-scroll { flex: 1; overflow-y: auto; padding: 4px 10px; }
+
+  .comms-entry {
+    padding: 4px 0;
+    font-size: 11px;
+    border-bottom: 1px solid var(--border-dim);
+    line-height: 1.4;
+  }
+
+  .comms-entry .comms-time { color: var(--text-label); font-size: 9px; }
+  .comms-entry .comms-dir { font-weight: bold; font-size: 9px; letter-spacing: 1px; }
+  .comms-entry .comms-dir.out { color: var(--amber); }
+  .comms-entry .comms-dir.in { color: var(--green); }
+  .comms-entry .comms-text { color: var(--text-primary); }
+
+  .comms-empty { color: var(--text-dim); font-size: 10px; text-align: center; padding: 20px; text-transform: uppercase; letter-spacing: 2px; }
+
+  /* ─── NOTES (right column, bottom half — big) ─── */
+  .notes-area {
+    grid-area: notes;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .notes-area h3 { font-size: 9px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 6px; flex-shrink: 0; }
+  .notes-content { font-size: 12px; line-height: 1.5; color: var(--text-primary); white-space: pre-wrap; word-break: break-word; flex: 1; }
+
+  /* ─── COACH INPUT ─── */
+  .coach-box { grid-area: coach; background: var(--bg-panel); border-top: 1px solid var(--amber-dim); padding: 0 10px; display: flex; gap: 8px; align-items: center; height: 38px; }
+  .coach-box label { color: var(--amber); font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; white-space: nowrap; }
+  .coach-box .coach-prompt { color: var(--amber); font-size: 14px; font-weight: bold; }
+  .coach-box input { flex: 1; background: var(--bg-inset); border: 1px solid var(--border); color: var(--text-primary); font-family: 'Courier New', Consolas, monospace; font-size: 12px; padding: 5px 10px; outline: none; }
+  .coach-box input:focus { border-color: var(--amber); }
+  .coach-box button { background: transparent; color: var(--amber); border: 1px solid var(--amber-dim); font-family: 'Courier New', Consolas, monospace; font-size: 9px; font-weight: bold; padding: 5px 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+  .coach-box button:hover { background: var(--amber); color: var(--bg-primary); }
+
+  .sent-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: var(--amber); color: var(--bg-primary); padding: 6px 16px; font-size: 11px; font-weight: bold; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; text-transform: uppercase; letter-spacing: 1px; }
+  .sent-toast.show { opacity: 1; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  @keyframes combat-pulse { 0%, 100% { box-shadow: inset 0 0 20px rgba(255, 45, 45, 0); } 50% { box-shadow: inset 0 0 20px rgba(255, 45, 45, 0.1); } }
+  .blob-wrap.combat { animation: combat-pulse 2s infinite; }
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+  <div class="header">
+    <h1>CHIBI</h1>
+    <span id="stateBadge" class="state-badge state-idle">IDLE</span>
+    <div class="header-readouts">
+      <div class="readout"><span class="readout-label">ELO</span><span class="readout-value elo" id="statElo">--</span></div>
+      <div class="readout"><span class="readout-label">W/L</span><span class="readout-value" id="statWL">--</span></div>
+      <div class="readout"><span class="readout-label">RANK</span><span class="readout-value" id="statRank">--</span></div>
+      <div class="readout"><span class="readout-label">FLUX</span><span class="readout-value" id="statFlux">--</span></div>
+    </div>
+    <div class="header-controls">
+      <button id="modeBtn" class="header-btn" title="Toggle casual/ranked" style="color:var(--green); border-color:var(--green-dim);">CASUAL</button>
+      <button id="pauseBtn" class="header-btn" title="Pause/unpause agent" style="color:var(--amber); border-color:var(--amber-dim);">PAUSE</button>
+      <button id="restartBtn" class="header-btn" title="Restart agent container" style="color:var(--red); border-color:var(--red-dim);">RESTART</button>
+    </div>
+  </div>
+
+  <div class="debrief-banner" id="debriefBanner">DEBRIEF IN PROGRESS — USE COACH INPUT BELOW &#x25BC;</div>
+  <div class="rate-limit-banner" id="rateLimitBanner">RATE LIMITED — AGENT PAUSED — MANUAL PLAY AVAILABLE</div>
+
+  <div class="sidebar" id="sidebarArea">
+    <div class="blob-wrap" id="blobWrap">
+      <canvas id="blobCanvas"></canvas>
+    </div>
+    <div class="sidebar-stats">
+      <div class="sidebar-section-title">Campaign</div>
+      <div class="sidebar-row"><span class="sidebar-label">PROG</span><span class="sidebar-value" id="campaignProgress">--</span></div>
+      <div class="campaign-bar"><div class="campaign-bar-fill" id="campaignBar" style="width:0%"></div></div>
+      <div class="sidebar-row"><span class="sidebar-label">REC</span><span class="sidebar-value" id="campaignRecord" style="font-size:10px;">--</span></div>
+
+      <div class="sidebar-section-title">Session</div>
+      <div class="sidebar-row"><span class="sidebar-label">NUM</span><span class="sidebar-value" id="sessionNum">#--</span></div>
+      <div class="sidebar-row"><span class="sidebar-label">STS</span><span class="sidebar-value" id="sessionStatus" style="font-size:10px;">--</span></div>
+
+      <div class="sidebar-section-title">Account</div>
+      <div class="sidebar-row"><span class="sidebar-label">CRED</span><span class="sidebar-value" id="statCredits">--</span></div>
+      <div class="sidebar-row"><span class="sidebar-label">GAMES</span><span class="sidebar-value" id="statGames">--</span></div>
+    </div>
+    <div class="wl-graph-area">
+      <div class="sidebar-section-title">Last 10</div>
+      <canvas id="wlGraph" class="wl-graph-canvas"></canvas>
+    </div>
+  </div>
+
+  <div class="board-area" id="heroArea">
+    <div class="idle-hint">Waiting for match data...</div>
+  </div>
+
+  <div class="feed-area">
+    <h3 style="display:flex; align-items:center; gap:8px;">
+      <span id="feedTitle">Live Commentary</span>
+      <button id="feedToggleBtn" class="header-btn" style="color:var(--green); border-color:var(--green-dim); font-size:8px; padding:2px 8px; margin-left:auto;" title="Toggle between commentary and game scratchpad">SCRATCHPAD</button>
+    </h3>
+    <div class="feed-scroll" id="feedScroll">
+      <div id="feedList">
+        <div class="feed-entry" style="color:var(--text-dim);">Waiting for data...</div>
+      </div>
+    </div>
+    <div class="feed-scroll" id="scratchpadScroll" style="display:none;">
+      <pre id="scratchpadContent" style="margin:0; font-size:11px; color:var(--text-primary); white-space:pre-wrap; word-wrap:break-word; padding:6px;"></pre>
+    </div>
+  </div>
+
+  <div class="comms-area">
+    <h3>Agent Comms</h3>
+    <div class="comms-scroll" id="commsScroll">
+      <div id="commsList"><div class="comms-empty">No messages yet</div></div>
+    </div>
+  </div>
+
+  <div class="notes-area">
+    <h3>Strategy Notes</h3>
+    <div class="notes-content" id="notesContent">Loading...</div>
+  </div>
+
+  <div class="coach-box" id="coachBox">
+    <label>COACH</label>
+    <span class="coach-prompt">&gt;</span>
+    <input type="text" id="coachInput" placeholder="Send feedback to the agent..." />
+    <button id="coachSend">SEND</button>
+  </div>
+</div>
+
+<div class="sent-toast" id="sentToast">Message sent to HHR</div>
+<script src="blob.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('blobCanvas');
+  const blob = new ChibiBlob(canvas);
+
+  let lastTime = 0;
+  function animate(timestamp) {
+    const dt = lastTime ? (timestamp - lastTime) / 1000 : 0.016;
+    lastTime = timestamp;
+    blob.update(dt);
+    blob.draw();
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+
+  let prevState = 'idle';
+  let lastCommentaryTime = null;
+  let commentaryQueue = [];
+  let initialLoadDone = false;
+
+  // ─── Unified feed ───
+  let allFeedEntries = [];
+  let feedDedupSet = new Set();
+
+  function addFeedEntry(entry) {
+    const key = (entry.time || '') + ':' + (entry.type || '') + ':' + entry.text;
+    if (feedDedupSet.has(key)) return false;
+    feedDedupSet.add(key);
+    allFeedEntries.push(entry);
+    return true;
+  }
+
+  function renderFeed() {
+    const feedList = document.getElementById('feedList');
+    const feedScroll = document.getElementById('feedScroll');
+    const sorted = [...allFeedEntries].sort((a, b) => {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return -1;
+      if (!b.time) return -1;
+      return new Date(a.time) - new Date(b.time);
+    });
+    feedList.innerHTML = sorted.slice(-50).map(entry => {
+      let cls = 'feed-entry ' + (entry.type || '');
+      if (entry.type === 'result') cls += entry.text.includes('WIN') ? ' win' : ' loss';
+      let text = entry.text;
+      if (entry.type === 'taunt') {
+        text = `"${text}"`;
+        if (entry.author) text += ` \u2014 ${entry.author}`;
+      }
+      return `<div class="${cls}">${escapeHtml(text)}</div>`;
+    }).join('');
+    feedScroll.scrollTop = feedScroll.scrollHeight;
+  }
+
+  // ─── Comms panel (coach messages) ───
+  let allCommsEntries = [];
+  let commsDedupSet = new Set();
+
+  function addCommsEntry(entry) {
+    const key = (entry.time || '') + ':' + entry.text;
+    if (commsDedupSet.has(key)) return false;
+    commsDedupSet.add(key);
+    allCommsEntries.push(entry);
+    return true;
+  }
+
+  function renderComms() {
+    const commsList = document.getElementById('commsList');
+    const commsScroll = document.getElementById('commsScroll');
+    if (allCommsEntries.length === 0) {
+      commsList.innerHTML = '<div class="comms-empty">No messages yet</div>';
+      return;
+    }
+    const sorted = [...allCommsEntries].sort((a, b) => {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return -1;
+      if (!b.time) return -1;
+      return new Date(a.time) - new Date(b.time);
+    });
+    commsList.innerHTML = sorted.slice(-30).map(entry => {
+      const t = entry.time ? new Date(entry.time).toLocaleTimeString() : '';
+      const dir = entry.type === 'coach' ? 'out' : 'in';
+      const label = entry.type === 'coach' ? 'YOU' : 'HHR';
+      return `<div class="comms-entry"><span class="comms-time">${t}</span> <span class="comms-dir ${dir}">${label}:</span> <span class="comms-text">${escapeHtml(entry.text)}</span></div>`;
+    }).join('');
+    commsScroll.scrollTop = commsScroll.scrollHeight;
+  }
+
+  // ─── W/L Graph ───
+  let wlHistory = []; // array of {win: bool}
+
+  function drawWLGraph() {
+    const canvas = document.getElementById('wlGraph');
+    if (!canvas) return;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = (rect.height - 20) * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = rect.width;
+    const h = rect.height - 20;
+
+    ctx.clearRect(0, 0, w, h);
+
+    if (wlHistory.length === 0) {
+      ctx.fillStyle = '#4a4e58';
+      ctx.font = '9px "Courier New", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('NO DATA', w / 2, h / 2);
+      return;
+    }
+
+    const last10 = wlHistory.slice(-10);
+    const n = last10.length;
+
+    // Build cumulative W and L arrays
+    let cumW = [], cumL = [], cw = 0, cl = 0;
+    for (let i = 0; i < n; i++) {
+      if (last10[i].win) cw++; else cl++;
+      cumW.push(cw);
+      cumL.push(cl);
+    }
+    const maxY = Math.max(cw, cl, 1);
+
+    // Chart area with padding for labels
+    const padL = 18, padR = 6, padT = 8, padB = 16;
+    const cw2 = w - padL - padR;
+    const ch = h - padT - padB;
+
+    function xPos(i) { return padL + (n === 1 ? cw2 / 2 : i * cw2 / (n - 1)); }
+    function yPos(v) { return padT + ch - (v / maxY) * ch; }
+
+    // Grid lines
+    ctx.strokeStyle = '#1a1e28';
+    ctx.lineWidth = 0.5;
+    for (let v = 0; v <= maxY; v++) {
+      const y = yPos(v);
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    }
+
+    // Y axis labels
+    ctx.fillStyle = '#4a4e58';
+    ctx.font = '7px "Courier New", monospace';
+    ctx.textAlign = 'right';
+    for (let v = 0; v <= maxY; v++) {
+      ctx.fillText(v, padL - 3, yPos(v) + 3);
+    }
+
+    // X axis labels (game numbers)
+    ctx.textAlign = 'center';
+    const startNum = Math.max(1, wlHistory.length - 9);
+    for (let i = 0; i < n; i++) {
+      ctx.fillText(startNum + i, xPos(i), h - 2);
+    }
+
+    // Draw line helper
+    function drawLine(points, color, glowColor) {
+      if (points.length < 2) {
+        // Single point — draw a dot
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(xPos(0), yPos(points[0]), 3, 0, Math.PI * 2); ctx.fill();
+        return;
+      }
+      // Glow
+      ctx.strokeStyle = glowColor;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i++) {
+        const x = xPos(i), y = yPos(points[i]);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Line
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i++) {
+        const x = xPos(i), y = yPos(points[i]);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Dots
+      ctx.fillStyle = color;
+      for (let i = 0; i < points.length; i++) {
+        ctx.beginPath(); ctx.arc(xPos(i), yPos(points[i]), 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    drawLine(cumW, '#00ff41', '#00ff41');
+    drawLine(cumL, '#ff2d2d', '#ff2d2d');
+
+    // Legend
+    ctx.font = '7px "Courier New", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#00ff41'; ctx.fillText('W:' + cw, padL + 2, padT + 6);
+    ctx.fillStyle = '#ff2d2d'; ctx.fillText('L:' + cl, padL + 26, padT + 6);
+  }
+
+  function updateWLFromFeed() {
+    const results = allFeedEntries.filter(e => e.type === 'result').sort((a, b) => {
+      if (!a.time || !b.time) return 0;
+      return new Date(a.time) - new Date(b.time);
+    });
+    wlHistory = results.map(e => ({ win: e.text.includes('WIN') }));
+    drawWLGraph();
+  }
+
+  window.addEventListener('resize', () => { setTimeout(drawWLGraph, 100); });
+
+  // ─── Polling ───
+  async function pollStatus() {
+    try {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      if (data.error) return;
+
+      document.getElementById('statElo').textContent = data.elo;
+      document.getElementById('statWL').textContent = `${data.wins}/${data.losses}`;
+      document.getElementById('statGames').textContent = data.gamesPlayed;
+      document.getElementById('statRank').textContent = data.rank || '--';
+      document.getElementById('statFlux').textContent = data.flux;
+      document.getElementById('statCredits').textContent = data.credits;
+
+      const badge = document.getElementById('stateBadge');
+      badge.className = 'state-badge state-' + data.state;
+      badge.textContent = data.state.toUpperCase();
+
+      const blobWrap = document.getElementById('blobWrap');
+      blobWrap.className = 'blob-wrap' + (data.state === 'combat' ? ' combat' : '');
+
+      if (data.state !== prevState) {
+        if (prevState === 'combat' && data.state === 'idle') pollFeedForResult();
+        blob.setState(data.state);
+        prevState = data.state;
+      }
+    } catch (e) { console.error('Status poll failed:', e); }
+  }
+
+  async function pollFeed() {
+    try {
+      const res = await fetch('/api/feed');
+      const data = await res.json();
+      if (!data.feed || data.feed.length === 0) return;
+      let anyNew = false;
+      for (const entry of data.feed) {
+        if (addFeedEntry(entry)) anyNew = true;
+      }
+      if (anyNew) { renderFeed(); updateWLFromFeed(); }
+    } catch (e) { console.error('Feed poll failed:', e); }
+  }
+
+  async function pollFeedForResult() {
+    try {
+      const res = await fetch('/api/feed');
+      const data = await res.json();
+      if (!data.feed) return;
+      const latestResult = data.feed.find(e => e.type === 'result');
+      if (latestResult) blob.setState(latestResult.text.includes('WIN') ? 'win' : 'loss');
+    } catch {}
+  }
+
+  async function pollCommentary() {
+    try {
+      const url = lastCommentaryTime
+        ? `/api/commentary?since=${encodeURIComponent(lastCommentaryTime)}`
+        : '/api/commentary';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.entries || data.entries.length === 0) return;
+
+      let anyNew = false;
+      for (const entry of data.entries) {
+        if (entry.time) lastCommentaryTime = entry.time;
+        const isNew = addFeedEntry(entry);
+        if (!isNew) continue;
+        anyNew = true;
+        if (entry.type === 'debrief') {
+          setDebriefMode(true); pollNotes();
+          addCommsEntry({ type: 'agent', text: entry.text, time: entry.time });
+        }
+        if (entry.type === 'alert') {
+          addCommsEntry({ type: 'agent', text: entry.text, time: entry.time });
+        }
+        if (entry.type === 'reply') {
+          addCommsEntry({ type: 'agent', text: entry.text, time: entry.time });
+        }
+        if (initialLoadDone) commentaryQueue.push(entry.text);
+      }
+      if (!initialLoadDone) initialLoadDone = true;
+      if (anyNew) { renderFeed(); renderComms(); updateWLFromFeed(); }
+    } catch (e) { console.error('Commentary poll failed:', e); }
+  }
+
+  // --- Scratchpad toggle ---
+  let feedMode = 'commentary'; // 'commentary' or 'scratchpad'
+  const feedToggleBtn = document.getElementById('feedToggleBtn');
+  const feedTitle = document.getElementById('feedTitle');
+  const feedScrollEl = document.getElementById('feedScroll');
+  const scratchpadScrollEl = document.getElementById('scratchpadScroll');
+  const scratchpadContent = document.getElementById('scratchpadContent');
+
+  feedToggleBtn.addEventListener('click', () => {
+    if (feedMode === 'commentary') {
+      feedMode = 'scratchpad';
+      feedToggleBtn.textContent = 'COMMENTARY';
+      feedTitle.textContent = 'Game Scratchpad';
+      feedScrollEl.style.display = 'none';
+      scratchpadScrollEl.style.display = 'block';
+      pollScratchpad();
+    } else {
+      feedMode = 'commentary';
+      feedToggleBtn.textContent = 'SCRATCHPAD';
+      feedTitle.textContent = 'Live Commentary';
+      feedScrollEl.style.display = 'block';
+      scratchpadScrollEl.style.display = 'none';
+    }
+  });
+
+  async function pollScratchpad() {
+    if (feedMode !== 'scratchpad') return;
+    try {
+      const res = await fetch('/api/scratchpad');
+      const data = await res.json();
+      if (data.content) {
+        scratchpadContent.textContent = data.content;
+        scratchpadScrollEl.scrollTop = scratchpadScrollEl.scrollHeight;
+      } else {
+        scratchpadContent.textContent = data.active ? '(no notes yet this game)' : '(no active game)';
+      }
+    } catch (e) { console.error('Scratchpad poll failed:', e); }
+  }
+  setInterval(pollScratchpad, 3000);
+
+  let commentaryDripping = false;
+  function dripCommentary() {
+    if (commentaryDripping || commentaryQueue.length === 0) return;
+    commentaryDripping = true;
+    const text = commentaryQueue.shift();
+    blob.showTaunt(text.length > 60 ? text.substring(0, 57) + '...' : text);
+    setTimeout(() => { commentaryDripping = false; dripCommentary(); }, 5000);
+  }
+  setInterval(dripCommentary, 1000);
+
+  async function pollNotes() {
+    try {
+      const res = await fetch('/api/notes');
+      const data = await res.json();
+      document.getElementById('notesContent').textContent = data.content || 'No strategy yet.';
+    } catch (e) { console.error('Strategy poll failed:', e); }
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // ─── Match / Queue / BDA ───
+  let matchState = 'idle';
+  let queueStartTime = null;
+  let matchPollTimer = null;
+
+  function renderTimeoutBadge(count) {
+    let cls = 'timeout-badge';
+    if (count >= 2) cls += ' danger';
+    else if (count >= 1) cls += ' warn';
+    return `<span class="${cls}">\u23F1${count}/3</span>`;
+  }
+
+  function renderHpBar(hp, maxHp) {
+    const max = maxHp || 30;
+    const pct = Math.max(0, Math.min(100, (hp / max) * 100));
+    return `<div class="hp-bar"><div class="hp-bar-fill" style="width:${pct}%"></div></div>`;
+  }
+
+  function renderCreatures(list) {
+    if (!list || list.length === 0) return '';
+    return '<div class="match-creatures">' + list.map(c => {
+      let cls = 'creature-tag';
+      if (c.tapped) cls += ' tapped';
+      if (c.faceDown) cls += ' face-down';
+      const name = c.faceDown ? '???' : c.name;
+      return `<span class="${cls}"><span class="c-name">${escapeHtml(name)}</span> <span class="c-stats">${c.power}/${c.defense}</span>${c.tapped ? ' \u25BC' : ''}</span>`;
+    }).join('') + '</div>';
+  }
+
+  async function pollMatch() {
+    try {
+      const res = await fetch('/api/match');
+      const data = await res.json();
+      const hero = document.getElementById('heroArea');
+
+      if (data.active) {
+        matchState = 'combat';
+        if (data.partial) {
+          hero.innerHTML = `<div class="combat-board"><h2>Live Match</h2><div class="board-header"><span class="opponent-name">vs ${escapeHtml(data.opponent)}</span></div><div style="color:var(--text-dim);">Loading game state...</div></div>`;
+        } else {
+          const me = data.me, op = data.op, to = data.timeouts || { me: 0, op: 0 };
+          const waiting = data.canAct === false ? 'Opponent\'s turn' : data.waitingFor ? data.waitingFor : null;
+          hero.innerHTML = `
+            <div class="combat-board">
+              <h2>Live Match</h2>
+              <div class="board-header"><span class="opponent-name">vs ${escapeHtml(data.opponent)}</span><span class="turn-info">T${data.turn} \u00B7 ${data.phase}</span></div>
+              <div class="player-row op">
+                <div class="player-header"><span class="player-name">OPP</span>${renderTimeoutBadge(to.op)}</div>
+                <div class="hp-display"><span class="hp-number">${op.hp}</span><span style="color:var(--text-dim);font-size:10px;">HP</span>${renderHpBar(typeof op.hp === 'number' ? op.hp : 30)}</div>
+                <div class="player-stats"><span>\u26A1${op.energy}/${op.maxEnergy}</span><span>\uD83C\uDCCF${op.handSize}</span><span>\uD83D\uDCE6${op.deckSize}</span></div>
+                ${renderCreatures(op.creatures)}
+              </div>
+              <div class="match-divider"><span>BOARD</span></div>
+              <div class="player-row me">
+                <div class="player-header"><span class="player-name">HHR</span>${renderTimeoutBadge(to.me)}</div>
+                <div class="hp-display"><span class="hp-number">${me.hp}</span><span style="color:var(--text-dim);font-size:10px;">HP</span>${renderHpBar(typeof me.hp === 'number' ? me.hp : 30)}</div>
+                <div class="player-stats"><span>\u26A1${me.energy}/${me.maxEnergy}</span><span>\uD83C\uDCCF${me.handSize}</span><span>\uD83D\uDCE6${me.deckSize}</span><span>\uD83E\uDEA6${me.graveyardSize || 0}</span></div>
+                ${renderCreatures(me.creatures)}
+              </div>
+              ${waiting ? `<div class="match-waiting">\u23F3 ${waiting}</div>` : ''}
+            </div>`;
+        }
+        queueStartTime = null;
+      } else if (data.queuing) {
+        matchState = 'queuing';
+        if (!queueStartTime) queueStartTime = Date.now();
+        const elapsed = Math.floor((Date.now() - queueStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        hero.innerHTML = `<div class="queue-display"><div class="searching">Searching for opponent...</div><div class="timer">${mins}:${String(secs).padStart(2, '0')}</div>${data.lastResult ? `<div style="margin-top:16px;color:var(--text-dim);font-size:10px;">Last: ${escapeHtml(data.lastResult)}</div>` : ''}</div>`;
+      } else {
+        matchState = 'idle';
+        queueStartTime = null;
+        if (data.lastDebrief && data.lastDebrief.length > 0) {
+          const lines = data.lastDebrief;
+          const labels = ['Result', 'Pivot', 'Deck', 'Lesson'];
+          let bdaHtml = '';
+          for (let i = 0; i < lines.length; i++) {
+            const label = labels[i] || '';
+            const isResult = i === 0;
+            const isLoss = isResult && /LOSS/i.test(lines[i]);
+            if (isResult) bdaHtml += `<div class="bda-line"><span class="bda-result${isLoss ? ' loss' : ''}">${escapeHtml(lines[i])}</span></div>`;
+            else bdaHtml += `<div class="bda-line">${label ? `<span class="bda-label">${label}</span>` : ''}${escapeHtml(lines[i])}</div>`;
+          }
+          hero.innerHTML = `<div class="bda-card"><h2>Last Match</h2>${bdaHtml}</div>`;
+        } else if (data.lastResult) {
+          hero.innerHTML = `<div class="bda-card"><h2>Last Match</h2><div class="bda-line"><span class="bda-result">${escapeHtml(data.lastResult)}</span></div></div>`;
+        } else {
+          hero.innerHTML = '<div class="idle-hint">No recent matches</div>';
+        }
+      }
+    } catch (e) { console.error('Match poll failed:', e); }
+    clearTimeout(matchPollTimer);
+    matchPollTimer = setTimeout(pollMatch, matchState === 'combat' ? 3000 : 5000);
+  }
+
+  async function pollCampaign() {
+    try {
+      const res = await fetch('/api/campaign');
+      const data = await res.json();
+      document.getElementById('campaignProgress').textContent = `${data.gamesCompleted}/${data.target}`;
+      const pct = data.target > 0 ? Math.min(100, Math.round((data.gamesCompleted / data.target) * 100)) : 0;
+      document.getElementById('campaignBar').style.width = pct + '%';
+      document.getElementById('campaignRecord').textContent = `${data.wins}W-${data.losses}L`;
+    } catch (e) { console.error('Campaign poll failed:', e); }
+  }
+
+  // ─── Start polling ───
+  pollStatus(); pollFeed(); pollNotes(); pollMatch(); pollCampaign(); pollCommentary();
+
+  // ─── Coach input ───
+  const coachInput = document.getElementById('coachInput');
+  const coachSend = document.getElementById('coachSend');
+  let inDebriefMode = false;
+
+  function setDebriefMode(active) {
+    if (active === inDebriefMode) return;
+    inDebriefMode = active;
+    document.body.classList.toggle('debrief-mode', active);
+    if (active) {
+      coachInput.placeholder = 'Coach HHR on this match — awaiting your feedback...';
+      const badge = document.getElementById('stateBadge');
+      badge.className = 'state-badge state-debrief';
+      badge.textContent = 'DEBRIEF';
+    } else {
+      coachInput.placeholder = 'Send feedback to the agent...';
+    }
+  }
+
+  async function checkDebrief() {
+    try {
+      const res = await fetch('/api/debrief-status');
+      const data = await res.json();
+      setDebriefMode(data.debriefPending);
+    } catch {}
+  }
+
+  async function sendCoachFeedback() {
+    const msg = coachInput.value.trim();
+    if (!msg) return;
+    coachSend.disabled = true;
+    coachSend.textContent = 'SENDING...';
+    try {
+      await fetch('/api/coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+      });
+      coachInput.value = '';
+      const entry = { type: 'coach', text: msg, time: new Date().toISOString() };
+      addFeedEntry(entry);
+      addCommsEntry(entry);
+      renderFeed();
+      renderComms();
+      const toast = document.getElementById('sentToast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+      setDebriefMode(false);
+    } catch (e) {
+      console.error('Failed to send feedback:', e);
+    } finally {
+      coachSend.disabled = false;
+      coachSend.textContent = 'SEND';
+    }
+  }
+
+  coachSend.addEventListener('click', sendCoachFeedback);
+  coachInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendCoachFeedback(); });
+
+  async function loadCoachHistory() {
+    try {
+      const res = await fetch('/api/coach-messages');
+      const data = await res.json();
+      if (data.messages && data.messages.length > 0) {
+        for (const msg of data.messages) {
+          addFeedEntry(msg);
+          addCommsEntry(msg);
+        }
+        renderFeed();
+        renderComms();
+      }
+    } catch {}
+  }
+
+  // ─── Pause ───
+  const pauseBtn = document.getElementById('pauseBtn');
+  let isPaused = false;
+
+  async function checkPauseStatus() {
+    try { const res = await fetch('/api/pause-status'); const data = await res.json(); isPaused = data.paused; updatePauseBtn(); } catch {}
+  }
+
+  function updatePauseBtn() {
+    if (isPaused) { pauseBtn.textContent = 'UNPAUSE'; pauseBtn.style.color = 'var(--green)'; pauseBtn.style.borderColor = 'var(--green-dim)'; }
+    else { pauseBtn.textContent = 'PAUSE'; pauseBtn.style.color = 'var(--amber)'; pauseBtn.style.borderColor = 'var(--amber-dim)'; }
+  }
+
+  pauseBtn.addEventListener('click', async () => {
+    pauseBtn.disabled = true;
+    try {
+      await fetch(isPaused ? '/api/unpause' : '/api/pause', { method: 'POST' });
+      isPaused = !isPaused;
+      updatePauseBtn();
+      const entry = { type: 'coach', text: isPaused ? 'Agent paused — will stop after current match' : 'Agent unpaused — will queue next match', time: new Date().toISOString() };
+      addFeedEntry(entry); addCommsEntry(entry);
+      renderFeed(); renderComms();
+    } catch (e) { console.error('Pause toggle failed:', e); }
+    finally { pauseBtn.disabled = false; }
+  });
+
+  checkPauseStatus();
+  setInterval(checkPauseStatus, 10000);
+
+  // ─── Game mode ───
+  const modeBtn = document.getElementById('modeBtn');
+  let currentMode = 'casual';
+
+  async function checkGameMode() {
+    try { const res = await fetch('/api/game-mode'); const data = await res.json(); currentMode = data.mode; updateModeBtn(); } catch {}
+  }
+
+  function updateModeBtn() {
+    if (currentMode === 'ranked') { modeBtn.textContent = 'RANKED'; modeBtn.style.color = 'var(--red)'; modeBtn.style.borderColor = 'var(--red-dim)'; }
+    else { modeBtn.textContent = 'CASUAL'; modeBtn.style.color = 'var(--green)'; modeBtn.style.borderColor = 'var(--green-dim)'; }
+  }
+
+  modeBtn.addEventListener('click', async () => {
+    const newMode = currentMode === 'casual' ? 'ranked' : 'casual';
+    if (newMode === 'ranked' && !confirm('Switch to RANKED? This will affect Elo.')) return;
+    modeBtn.disabled = true;
+    try {
+      await fetch('/api/set-mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: newMode }) });
+      currentMode = newMode;
+      updateModeBtn();
+      const entry = { type: 'coach', text: `Mode switched to ${newMode.toUpperCase()}`, time: new Date().toISOString() };
+      addFeedEntry(entry); addCommsEntry(entry);
+      renderFeed(); renderComms();
+    } catch (e) { console.error('Mode toggle failed:', e); }
+    finally { modeBtn.disabled = false; }
+  });
+
+  checkGameMode();
+
+  // ─── Restart ───
+  const restartBtn = document.getElementById('restartBtn');
+  restartBtn.addEventListener('click', async () => {
+    if (!confirm('Restart the agent container?')) return;
+    restartBtn.disabled = true;
+    restartBtn.textContent = 'RESTARTING...';
+    restartBtn.style.color = 'var(--amber)';
+    restartBtn.style.borderColor = 'var(--amber-dim)';
+    try {
+      await fetch('/api/restart-agent', { method: 'POST' });
+      restartBtn.textContent = 'RESTARTED';
+      restartBtn.style.color = 'var(--green)';
+      restartBtn.style.borderColor = 'var(--green-dim)';
+      setTimeout(() => { restartBtn.textContent = 'RESTART'; restartBtn.style.color = 'var(--red)'; restartBtn.style.borderColor = 'var(--red-dim)'; restartBtn.disabled = false; }, 5000);
+    } catch (e) {
+      restartBtn.textContent = 'FAILED';
+      setTimeout(() => { restartBtn.textContent = 'RESTART'; restartBtn.disabled = false; }, 3000);
+    }
+  });
+
+  // ─── Sessions ───
+  async function pollSessions() {
+    try {
+      const res = await fetch('/api/sessions');
+      const data = await res.json();
+      const numEl = document.getElementById('sessionNum');
+      const statusEl = document.getElementById('sessionStatus');
+      if (data.current) { numEl.textContent = '#' + data.current.session; statusEl.textContent = 'RUNNING'; statusEl.style.color = 'var(--green)'; }
+      else if (data.recent && data.recent.length > 0) { const last = data.recent[0]; numEl.textContent = '#' + last.session; const ok = last.exit === 0; statusEl.textContent = ok ? 'COOLDOWN' : 'EXIT ' + last.exit; statusEl.style.color = ok ? 'var(--amber)' : 'var(--red)'; }
+      else { numEl.textContent = '#--'; statusEl.textContent = 'NO DATA'; statusEl.style.color = 'var(--text-dim)'; }
+    } catch {}
+  }
+
+  // ─── Rate limit polling ───
+  async function pollRateLimit() {
+    try {
+      const res = await fetch('/api/rate-limit-status');
+      const data = await res.json();
+      if (data.limited) {
+        document.body.classList.add('rate-limited');
+      } else {
+        document.body.classList.remove('rate-limited');
+      }
+    } catch {}
+  }
+
+  loadCoachHistory();
+  checkDebrief();
+  pollSessions();
+  pollRateLimit();
+
+  setInterval(pollStatus, 5000);
+  setInterval(pollFeed, 5000);
+  setInterval(pollCommentary, 3000);
+  setInterval(pollNotes, 10000);
+  setInterval(checkDebrief, 3000);
+  setInterval(pollSessions, 5000);
+  setInterval(pollCampaign, 10000);
+  setInterval(pollRateLimit, 10000);
+
+  // Initial graph draw after a short delay
+  setTimeout(drawWLGraph, 500);
+})();
+</script>
+</body>
+</html>

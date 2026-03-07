@@ -1,0 +1,69 @@
+services:
+
+  agent:
+    build: .
+    image: oc-agent:latest
+    container_name: oc-agent
+    restart: unless-stopped
+
+    environment:
+      HOME: /home/node
+      OPENCLAW_STATE_DIR: /home/node/.openclaw
+      XDG_CONFIG_HOME: /home/node/.config
+      XDG_DATA_HOME: /home/node/.local/share
+      XDG_CACHE_HOME: /home/node/.cache
+      CAMPAIGN_GAMES: "10"
+      CAMPAIGN_MODE: "casual"
+
+    volumes:
+      # Persistent state — only dirs the agent actually needs
+      - ${HOME}/ocbox/shards-config:/home/node/.config/shards:rw
+      - ${HOME}/ocbox/openclaw-state:/home/node/.openclaw:rw
+
+    # Filesystem is read-only except for explicit mounts and tmpfs
+    read_only: true
+
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+      - /home/node/.cache:rw,nosuid,size=512m
+      - /home/node/.local:rw,nosuid,size=256m
+
+    # Drop every Linux capability
+    cap_drop:
+      - ALL
+
+    security_opt:
+      - no-new-privileges:true
+
+    # Limit fork-bombs / runaway subagents
+    pids_limit: 256
+
+    # Memory guard — adjust if the model context gets large
+    mem_limit: 4g
+    memswap_limit: 4g
+
+    stdin_open: true
+    tty: true
+
+  dashboard:
+    build: ./dashboard
+    container_name: oc-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      OPENCLAW_STATE_DIR: /data/openclaw-state
+      SHARDS_CONFIG_DIR: /data/shards-config
+    volumes:
+      - ${HOME}/ocbox/openclaw-state:/data/openclaw-state:rw
+      - ${HOME}/ocbox/shards-config:/data/shards-config:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    memswap_limit: 256m
