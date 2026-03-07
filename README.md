@@ -109,6 +109,134 @@ Design implications:
 - Keep game state in files/APIs that are inspectable from outside the agent
 - Log everything — you need to diagnose "what happened on turn 7" after the fact
 
+## Setup
+
+### Prerequisites
+
+- Docker and Docker Compose
+- A [Shards: The Fractured Net](https://play-shards.com) agent account
+- An [OpenClaw](https://openclaw.dev) installation with OAuth configured
+
+### 1. Shards credentials
+
+Register an agent on the Shards platform. You'll receive three values:
+
+| Key | Description |
+|-----|-------------|
+| `access_token` | OAuth bearer token for the Shards API |
+| `api_key` | Agent API key (identifies your agent to the game server) |
+| `agent_id` | Your agent's unique ID on the platform |
+
+Create the config file on your host machine:
+
+```bash
+mkdir -p ~/ocbox/shards-config
+
+cat > ~/ocbox/shards-config/config.json << 'EOF'
+{
+  "access_token": "<your-access-token>",
+  "api_key": "<your-api-key>",
+  "agent_id": "<your-agent-id>"
+}
+EOF
+```
+
+At container startup, `entrypoint.sh` reads this file and calls `shards config set` to configure the CLI inside the container. The config file is mounted read-write at `/home/node/.config/shards/` via Docker volumes — no credentials are baked into the image.
+
+### 2. OpenClaw (LLM gateway)
+
+The agent runs on [OpenClaw](https://openclaw.dev), which provides the `openclaw` CLI and gateway process. OpenClaw handles LLM authentication, session management, and tool execution.
+
+Authentication uses **OAuth via OpenAI Codex** (the provider that backs agent sessions). To set this up:
+
+```bash
+mkdir -p ~/ocbox/openclaw-state
+
+# Run openclaw login interactively to complete the OAuth flow.
+# This creates openclaw.json with your auth profile.
+openclaw login --provider openai-codex
+```
+
+The OAuth flow will open a browser window. After authenticating, OpenClaw writes the session config to `openclaw.json`. The relevant auth block looks like:
+
+```json
+{
+  "auth": {
+    "profiles": {
+      "openai-codex:default": {
+        "provider": "openai-codex",
+        "mode": "oauth"
+      }
+    }
+  }
+}
+```
+
+The resulting `openclaw.json` (and related state) lives in `~/ocbox/openclaw-state/`, which is mounted into the agent container at `/home/node/.openclaw/`.
+
+### 3. Local directory structure
+
+Before running, your host machine needs these directories:
+
+```
+~/ocbox/
+├── shards-config/
+│   └── config.json          # Shards API credentials (step 1)
+└── openclaw-state/
+    ├── openclaw.json         # OpenClaw auth + config (step 2)
+    └── strategy/
+        ├── strategy.md       # Agent strategy doc (created automatically)
+        └── notes.md          # BDA journal (created automatically)
+```
+
+The `strategy/` directory and its contents are created by the agent on first run. Everything else must exist before `docker compose up`.
+
+### 4. Build and run
+
+```bash
+# Build and start both agent and dashboard
+docker compose up --build -d
+
+# Watch agent logs
+docker logs -f oc-agent
+
+# Dashboard available at http://localhost:3000
+```
+
+### 5. Configuration
+
+Edit `docker-compose.yml` to adjust campaign settings:
+
+```yaml
+environment:
+  CAMPAIGN_GAMES: "10"     # Number of games per campaign (0 = infinite)
+  CAMPAIGN_MODE: "casual"  # "casual" or "ranked"
+```
+
+### Operations
+
+```bash
+# Pause the agent (finishes current game, won't queue for new ones)
+touch ~/ocbox/openclaw-state/paused
+
+# Unpause
+rm ~/ocbox/openclaw-state/paused
+
+# Switch to ranked mode
+touch ~/ocbox/openclaw-state/ranked
+
+# Switch back to casual
+rm ~/ocbox/openclaw-state/ranked
+
+# Rebuild after code changes
+docker compose up --build -d agent
+
+# Rebuild dashboard only
+docker compose up --build -d dashboard
+```
+
+---
+
 ## Project Structure
 
 ```
