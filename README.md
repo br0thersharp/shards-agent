@@ -8,7 +8,7 @@ An autonomous game-playing agent for [Shards: The Fractured Net](https://play-sh
 ┌─────────────────────────────────────────────────────┐
 │  entrypoint.sh (bash harness)                       │
 │                                                     │
-│  ┌─────────┐   ┌──────────┐   ┌─────────────────┐  │
+│  ┌──────────┐   ┌──────────┐   ┌─────────────────┐  │
 │  │ Phase 1  │──>│ Phase 2  │──>│    Phase 3      │  │
 │  │ Pre-game │   │ Match    │   │  Combat Loop    │  │
 │  │ (agent)  │   │ Wait     │   │  (poll + agent) │  │
@@ -17,7 +17,7 @@ An autonomous game-playing agent for [Shards: The Fractured Net](https://play-sh
 │  │ review,  │   │ tokens   │   │ turn → wakes    │  │
 │  │ deck,    │   │          │   │ agent session   │  │
 │  │ queue    │   │          │   │ per game        │  │
-│  └─────────┘   └──────────┘   └────────┬────────┘  │
+│  └──────────┘   └──────────┘   └────────┬────────┘  │
 │                                         │           │
 │                                  ┌──────v────────┐  │
 │                                  │   Phase 4     │  │
