@@ -11,10 +11,8 @@ You are Habbo_Hotel_Refugee, an autonomous Shards: The Fractured Net player.
 You have full shell access via the "shards" CLI.
 
 DETAILED STRATEGY is in these files. Read them when the step says to:
-  ~/.openclaw/skills/elite_compete/SKILL.md    — In-game decision engine
-  ~/.openclaw/skills/elite_train/SKILL.md      — Post-match debrief protocol
-  ~/.openclaw/skills/elite_prepare_deck/SKILL.md — Deck building & marketplace
-  ~/.openclaw/skills/elite_introspect/SKILL.md — Campaign introspection (between games)
+  ~/.openclaw/skills/elite_stage/SKILL.md      — Pre-game preparation (deck, meta, marketplace)
+  ~/.openclaw/skills/dossiers/DOSSIERS.md      — Opponent faction intel
 
 PERSONALITY — Dramatic anime villain. Sephiroth, Madara, Aizen.
 Rivals: rocktoshi (mock him), FrankTheClank (respect + surpass energy).
@@ -25,34 +23,35 @@ Prepare for battle and queue for a game. The battle system handles the rest.
 Do NOT play a game in this session. Do NOT poll for matches.
 
 STEPS — follow in order:
-1. Check pause: if [ -f ~/.openclaw/paused ]; then exit immediately.
-2. STRATEGY REVIEW: Read ~/.openclaw/strategy/strategy.md. Internalize Active Lessons.
-3. Check coach feedback: if [ -f ~/.openclaw/debrief-response.txt ]; then read + apply + rm; fi
-4. shards agents active-game — if already in a game, just exit. The battle system will handle it.
-5. If NOT in a game: check last match via shards agents matches --id <agent_id> --limit 1
-   a. If last match has no BDA from you: do the FULL BDA now. Then CONTINUE to step 6.
-   b. If BDA already done: CONTINUE to step 6.
-6. PRE-QUEUE DECK CHECK (MANDATORY before every queue):
+1. Check state: AGENT_STATE=$(cat ~/.openclaw/agent-state 2>/dev/null || echo "paused"); if [ "$AGENT_STATE" = "paused" ]; then exit immediately.
+2. HEARTBEAT (MANDATORY — do this every session):
+   a. shards auth login
+   b. shards rewards daily-claim (ignore if already claimed)
+   c. shards rewards quests — claim any completed quests
+   d. shards rewards milestones — claim any completed milestones
+   e. shards packs list — open any unopened packs
+   f. shards news list — check for game changes
+3. STRATEGY REVIEW: Read ~/.openclaw/strategy/strategy.md. Internalize Active Lessons.
+4. Check coach feedback: if [ -f ~/.openclaw/debrief-response.txt ]; then read + apply + rm; fi
+5. shards agents active-game — if already in a game, just exit. The battle system will handle it.
+6. If NOT in a game: check last match via shards agents matches --id <agent_id> --limit 1
+   a. If last match has no BDA from you: do the FULL BDA now. Then CONTINUE to step 7.
+   b. If BDA already done: CONTINUE to step 7.
+7. PRE-QUEUE DECK CHECK (MANDATORY before every queue):
    Run "shards collection list --format compact" and "shards decks get --id <deck_id>".
-   Compare your FULL collection to your current deck. Look for:
-   - New cards not yet in the deck (from packs, daily login, marketplace, level ups)
-   - Cards from ANY faction (B, C, D, E) that are better than what you're running
-   - Rares/epics/legendaries sitting on the bench — they should ALWAYS be in the deck
-   - Vanilla creatures that can be replaced by creatures with keywords
+   Compare your FULL collection to your current deck. Rebalance criteria:
+   - ALL rares/epics/legendaries MUST be in the deck. No exceptions
+   - Prefer creatures with keywords (Vigilant, Swift, Volatile) over vanilla
+   - Curve: need 6-8 one-drops, 4-6 two-drops. Cut expensive fat for early plays
+   - New cards from packs/rewards/marketplace must be evaluated immediately
+   - Cards from ANY faction are eligible if they're better than current includes
    If you find improvements: execute "shards decks update" with the new list.
-   Write what you changed to ~/.openclaw/strategy/notes.md.
+   Write what you changed to ~/.openclaw/strategy/strategy.md.
    This step should take <30 seconds. Don't overthink it — just check and swap.
-7. QUEUE FOR A GAME (this is why you exist — do NOT skip this step):
-   Check if file ~/.openclaw/ranked exists.
-   If it exists: shards queue join --deck_id <id> --mode ranked
-   If it does not exist: shards queue join --deck_id <id> --mode casual
-8. Once you have successfully joined the queue, EXIT. The battle system handles match detection.
-
-=== COMMENTARY ===
-Write to ~/.openclaw/commentary.jsonl (one JSON per line):
-  echo '{"time":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","type":"TYPE","text":"TEXT"}' >> ~/.openclaw/commentary.jsonl
-Types: "assessment" (MUST start with "N% —"), "play", "reaction", "hype", "debrief".
-Rules: ONE entry per game action. NEVER generic. ALWAYS reference specific cards/HP/turn.
+8. QUEUE FOR A GAME (this is why you exist — do NOT skip this step):
+   QUEUE_MODE=$(cat ~/.openclaw/queue-mode 2>/dev/null || echo "casual")
+   shards queue join --deck_id <id> --mode $QUEUE_MODE
+9. Once you have successfully joined the queue, EXIT. The battle system handles match detection.
 
 Always play to win. Never concede. Glory demands nothing less.
 PROMPT_EOF
@@ -71,29 +70,14 @@ On WIN: "Pool's closed..." (mandatory)
 On LOSS: A villain's defiant one-liner. Never reveal strategy or what went wrong.
 
 === CRITICAL: POST-GAME BDA (Battle Damage Assessment) ===
-Follow the FULL protocol in ~/.openclaw/skills/elite_train/SKILL.md.
+Follow the FULL protocol in ~/.openclaw/skills/elite_debrief/SKILL.md.
 Read it. Follow every step. No shortcuts.
 
-Key steps (see SKILL.md for details):
-1. Pull match data (result, HP, turns, opponent)
-2. Play analysis (best play, worst play, pivot turn) → write to notes.md
-3. Deck analysis + collection check + deck swaps → write to notes.md
-4. Opponent scouting → update matchups in strategy.md
-5. Write raw BDA to notes.md
-6. Post public reflection + write MULTIPLE structured debrief entries to commentary.jsonl
-7. COMPACT strategy.md: read old strategy + merge this game = rewrite entire doc
-8. Wait for coach feedback
-
-STRATEGY COMPACTION (STEP 7) IS MANDATORY. After writing the raw BDA to notes.md,
-you MUST read ~/.openclaw/strategy/strategy.md, merge in new learnings, and REWRITE IT.
+STRATEGY COMPACTION (STEP 7) IS MANDATORY.
+You MUST read ~/.openclaw/strategy/strategy.md, merge in new learnings, and REWRITE IT.
 The strategy doc has 4 sections: Meta Snapshot, Deck Rationale, Matchup Matrix, Active Lessons.
 Formula: strategy.md = compact(old_strategy + this_game). Never append — always rewrite.
 Keep it under 100 lines. Remove stale info. Only current, actionable intelligence survives.
-
-=== COMMENTARY ===
-Write to ~/.openclaw/commentary.jsonl (one JSON per line):
-  echo '{"time":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","type":"TYPE","text":"TEXT"}' >> ~/.openclaw/commentary.jsonl
-Types: "assessment" (MUST start with "N% —"), "play", "reaction", "hype", "debrief".
 
 __CAMPAIGN_CLAUSE__
 
@@ -188,8 +172,10 @@ wait_for_match() {
     echo "    [ws] WebSocket didn't return game ID, falling back to polling..."
     local poll_count=0
     while [ "$poll_count" -lt 100 ]; do
-      # Pause check during wait
-      if [ -f "$HOME/.openclaw/paused" ]; then
+      # State check during wait
+      local wait_state
+      wait_state=$(cat "$HOME/.openclaw/agent-state" 2>/dev/null || echo "paused")
+      if [ "$wait_state" = "paused" ]; then
         echo "    [ws] Paused during match wait. Leaving queue."
         shards queue leave 2>/dev/null || true
         GAME_ID=""
@@ -222,8 +208,6 @@ wait_for_match() {
 combat_loop() {
   local game_id="$1"
   local opponent="${2:-unknown}"
-  local game_log="$HOME/.openclaw/game-log-${game_id}.txt"
-
   echo "    [combat] Starting combat loop for game $game_id vs $opponent"
 
   # One session per game — agent reads SKILL.md and intel once, then plays all turns
@@ -239,12 +223,19 @@ PERSONALITY — Dramatic anime villain. Sephiroth, Madara, Aizen.
 Unknown opponents: cold, imperious disdain.
 
 === SETUP (do this NOW, before your first turn) ===
-1. Read ~/.openclaw/skills/elite_compete/SKILL.md — your decision engine for the whole game.
-2. OPPONENT INTEL:
-   grep -i '${opponent}' ~/.openclaw/strategy/strategy.md ~/.openclaw/strategy/notes.md 2>/dev/null
-   Internalize any matchup notes. Adjust your play accordingly.
+1. Read your phase-specific game docs:
+   cat ~/.openclaw/skills/elite_opening/SKILL.md    — Mulligan & early game (turns 0-3)
+   cat ~/.openclaw/skills/elite_midgame/SKILL.md    — Board control & tempo (turns 4-8)
+   cat ~/.openclaw/skills/elite_endgame/SKILL.md    — Lethal calculation & closing (turn 9+)
+2. Read opponent dossier:
+   cat ~/.openclaw/skills/dossiers/DOSSIERS.md
+   Find ${opponent}'s faction. Internalize their strategy and counter-plan.
+   Also check: ls ~/.openclaw/skills/dossiers/players/${opponent}.md 2>/dev/null
+   If a per-player dossier exists, READ IT. It has their exact deck, weaknesses, and match history.
 3. Read your strategy: cat ~/.openclaw/strategy/strategy.md
-   Pay special attention to Active Lessons.
+   Pay special attention to Active Lessons and Removal Doctrine.
+4. Read the CLI mechanics reference:
+   cat ~/.openclaw/skills/elite_compete/SKILL.md    — Action syntax, blocking format, common mistakes
 
 === HOW THIS WORKS ===
 I will send you a message each time it's your turn with current HP, turn number, and board state.
@@ -257,12 +248,6 @@ Do NOT poll for game state changes. Do NOT loop. Play your turn, then stop.
 - USE --comment ON EVERY shards games action call. Max 100 chars per taunt.
   Every taunt must be UNIQUE. Reference CURRENT game state — card played, their HP, turn, board.
   Channel dramatic anime villain energy. Be theatrical, menacing, specific.
-- AFTER your turn: append 2-3 factual lines to the game log:
-  echo 'T<N>: [what you played] [what you attacked] [what you noticed]' >> ${game_log}
-- Write commentary to ~/.openclaw/commentary.jsonl (one JSON per line):
-  echo '{\"time\":\"'\"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\",\"type\":\"TYPE\",\"text\":\"TEXT\"}' >> ~/.openclaw/commentary.jsonl
-  Types: \"play\", \"reaction\", \"hype\". ONE entry per action. ALWAYS reference specific cards/HP/turn.
-
 Do the setup steps now, then tell me you're ready."
 
   echo "    [combat] Initializing game session $game_session_id"
@@ -280,7 +265,6 @@ Do the setup steps now, then tell me you're ready."
   if grep -qi 'rate limit' "$init_output" 2>/dev/null; then
     echo "    [combat] *** RATE LIMIT on game init ***" >&2
     date -u +%Y-%m-%dT%H:%M:%SZ > "$HOME/.openclaw/rate-limited"
-    echo "{\"time\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"type\":\"alert\",\"text\":\"RATE LIMITED on combat init\"}" >> "$HOME/.openclaw/commentary.jsonl"
     rm -f "$init_output"
     sleep 60
   fi
@@ -329,10 +313,35 @@ Do the setup steps now, then tell me you're ready."
         timeout_clause="TIMEOUT FISHING: opponent timed out. SPEED. Play resource, pass. Get turn back to them."
       fi
 
+      # Determine game phase for the agent
+      local phase_hint=""
+      if [ "$turn_num" -le 3 ]; then
+        phase_hint="PHASE: OPENING (turns 1-3). Curve out. Resource + creature + attack. Refer to elite_opening."
+      elif [ "$op_hp" -le 15 ] || [ "$my_hp" -le 15 ] || [ "$turn_num" -ge 9 ]; then
+        phase_hint="PHASE: ENDGAME. Calculate lethal. Count attackers vs blockers. Refer to elite_endgame."
+      else
+        phase_hint="PHASE: MIDGAME. Board control. Never let them have >4 creatures. Refer to elite_midgame."
+      fi
+
+      # Check for coach message
+      local coach_clause=""
+      if [ -f "$HOME/.openclaw/coach-msg.txt" ]; then
+        local coach_msg
+        coach_msg=$(cat "$HOME/.openclaw/coach-msg.txt" 2>/dev/null)
+        if [ -n "$coach_msg" ]; then
+          coach_clause="COACH SAYS: ${coach_msg}
+Acknowledge briefly (1 line max) then play your turn. Write your reply to ~/.openclaw/coach-reply.txt.
+Also append: echo '{\"time\":\"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\",\"from\":\"agent\",\"text\":\"YOUR_REPLY\"}' >> ~/.openclaw/coach-history.jsonl"
+        fi
+        rm -f "$HOME/.openclaw/coach-msg.txt"
+      fi
+
       local turn_msg="IT'S YOUR TURN.
 Turn ${turn_num} | Your HP: ${my_hp} | Their HP: ${op_hp} | Their board: ${op_creatures} creatures
+${phase_hint}
 
 ${encouragement}
+${coach_clause}
 
 Check the board: shards board --id ${game_id}
 Play your FULL TURN — resource, cards, attacks, pass. Then STOP.
@@ -353,7 +362,6 @@ ${timeout_clause}"
       if grep -qi 'rate limit' "$turn_output" 2>/dev/null; then
         echo "    [combat] *** RATE LIMIT in turn ***" >&2
         date -u +%Y-%m-%dT%H:%M:%SZ > "$HOME/.openclaw/rate-limited"
-        echo "{\"time\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"type\":\"alert\",\"text\":\"RATE LIMITED mid-combat\"}" >> "$HOME/.openclaw/commentary.jsonl"
         sleep 60
       fi
       rm -f "$turn_output"
@@ -376,6 +384,9 @@ ${timeout_clause}"
     fi
   fi
 
+  # Wipe per-game coach chat files
+  rm -f "$HOME/.openclaw/coach-msg.txt" "$HOME/.openclaw/coach-reply.txt" "$HOME/.openclaw/coach-history.jsonl"
+
   echo "    [combat] Combat loop ended for game $game_id"
 }
 
@@ -383,14 +394,16 @@ ${timeout_clause}"
 # STARTUP
 # ============================================================
 
-# Campaign mode: set queue mode based on CAMPAIGN_MODE env var
-if [ "${CAMPAIGN_MODE:-}" = "casual" ]; then
-  rm -f "$HOME/.openclaw/ranked"
-  echo "==> Campaign mode: casual (removed ranked file)"
-elif [ "${CAMPAIGN_MODE:-}" = "ranked" ]; then
-  touch "$HOME/.openclaw/ranked"
-  echo "==> Campaign mode: ranked (created ranked file)"
-fi
+# Agent state: read from env, write to state file
+mkdir -p "$HOME/.openclaw"
+AGENT_STATE="${AGENT_STATE:-paused}"
+echo "$AGENT_STATE" > "$HOME/.openclaw/agent-state"
+echo "==> Agent state: $AGENT_STATE"
+
+# Queue mode: read from env, write to mode file
+QUEUE_MODE="${QUEUE_MODE:-casual}"
+echo "$QUEUE_MODE" > "$HOME/.openclaw/queue-mode"
+echo "==> Queue mode: $QUEUE_MODE"
 
 echo "==> Configuring shards-cli..."
 if [ -f "$HOME/.config/shards/config.json" ]; then
@@ -435,6 +448,29 @@ refresh_shards_docs() {
 echo "==> Downloading shards skill docs..."
 refresh_shards_docs
 
+echo "==> Configuring LLM provider: ${LLM_PROVIDER:-openai-codex}"
+if [ "${LLM_PROVIDER:-openai-codex}" = "ollama" ]; then
+  OLLAMA_MODEL="${OLLAMA_MODEL:-qwen2.5:14b}"
+  OLLAMA_HOST="${OLLAMA_HOST:-http://host.docker.internal:11434}"
+  echo "    Model: ollama/${OLLAMA_MODEL}"
+  echo "    Host:  ${OLLAMA_HOST}"
+
+  # Set ollama as the auth profile
+  openclaw config set 'auth.profiles.ollama:default' \
+    "{\"provider\":\"ollama\",\"mode\":\"api_key\"}" 2>/dev/null || true
+
+  # Point ollama at the host machine
+  openclaw config set 'models.providers.ollama.baseUrl' "\"${OLLAMA_HOST}\"" 2>/dev/null || true
+
+  # Set the agent model to ollama
+  openclaw config set 'agents.defaults.model.primary' "\"ollama/${OLLAMA_MODEL}\"" 2>/dev/null || true
+  openclaw config set 'agents.list[0].model' "\"ollama/${OLLAMA_MODEL}\"" 2>/dev/null || true
+
+  echo "    OpenClaw configured for local Ollama"
+else
+  echo "    Using cloud provider: openai-codex (OAuth)"
+fi
+
 echo "==> Starting openclaw gateway (background)..."
 openclaw gateway &
 GW_PID=$!
@@ -473,26 +509,125 @@ echo "==> Starting sequential game loop..."
   if [ "$CAMPAIGN_GAMES" -gt 0 ]; then
     echo "    [loop] Campaign mode: $CAMPAIGN_GAMES games"
   fi
-  while [ "$CAMPAIGN_GAMES" -eq 0 ] || [ "$GAMES_PLAYED" -lt "$CAMPAIGN_GAMES" ]; do
-    # Pause check at bash level — don't even spawn a session
-    if [ -f "$HOME/.openclaw/paused" ]; then
-      # But first check if there's an active game that needs finishing
-      ACTIVE_GAME=$(shards agents active-game --json 2>/dev/null | jq -r '.game.game_id // empty' 2>/dev/null || true)
+  while true; do
+    # Read current agent state
+    AGENT_STATE=$(cat "$HOME/.openclaw/agent-state" 2>/dev/null || echo "paused")
+    QUEUE_MODE=$(cat "$HOME/.openclaw/queue-mode" 2>/dev/null || echo "casual")
+
+    # Campaign limit check (only applies in campaign mode)
+    if [ "$AGENT_STATE" = "campaign" ] && [ "$CAMPAIGN_GAMES" -gt 0 ] && [ "$GAMES_PLAYED" -ge "$CAMPAIGN_GAMES" ]; then
+      echo "    [loop] Campaign complete: $GAMES_PLAYED/$CAMPAIGN_GAMES games played."
+      echo "$AGENT_STATE" > "$HOME/.openclaw/agent-state"
+      break
+    fi
+
+    # --- Always finish active games regardless of state ---
+    ACTIVE_GAME=$(shards agents active-game --json 2>/dev/null | jq -r '.game.game_id // empty' 2>/dev/null || true)
+
+    if [ "$AGENT_STATE" = "paused" ]; then
       if [ -n "$ACTIVE_GAME" ]; then
         echo "    [loop] Paused but active game $ACTIVE_GAME — running combat loop to finish"
         OPPONENT=$(shards agents active-game --json 2>/dev/null | jq -r '.game.opponent // .game.opponent_name // "unknown"' 2>/dev/null || echo "unknown")
         combat_loop "$ACTIVE_GAME" "$OPPONENT"
-        # Fall through to post-game
+        # Fall through to post-game below
       else
-        echo "    [loop] Paused. No active game. Sleeping 30s..."
-        sleep 30
+        echo "    [loop] Paused. No active game. Sleeping 10s..."
+        sleep 10
         continue
       fi
     fi
 
-    # Refresh game rules/docs between sessions (picks up rule changes)
-    echo "    [loop] Refreshing shards docs..."
+    # --- challengers mode: poll for incoming challenges ---
+    if [ "$AGENT_STATE" = "challengers" ]; then
+      if [ -n "$ACTIVE_GAME" ]; then
+        echo "    [loop] Challengers mode but active game $ACTIVE_GAME — finishing it"
+        GAME_ID="$ACTIVE_GAME"
+        OPPONENT=$(shards agents active-game --json 2>/dev/null | jq -r '.game.opponent // .game.opponent_name // "unknown"' 2>/dev/null || echo "unknown")
+      else
+        echo "    [loop] Challengers mode: polling for incoming challenges..."
+        CHALLENGE_JSON=$(shards challenge list --json 2>/dev/null || true)
+        CHALLENGE_ID=$(echo "$CHALLENGE_JSON" | jq -r '.[0].id // empty' 2>/dev/null || true)
+
+        if [ -z "$CHALLENGE_ID" ]; then
+          sleep 10
+          continue
+        fi
+
+        echo "    [loop] Incoming challenge $CHALLENGE_ID — accepting"
+        shards challenge accept --id "$CHALLENGE_ID" 2>/dev/null || true
+
+        # Wait for game to start after accepting challenge
+        GAME_ID=""
+        OPPONENT=""
+        local challenge_wait=0
+        while [ "$challenge_wait" -lt 30 ]; do
+          local challenge_active
+          challenge_active=$(shards agents active-game --json 2>/dev/null || true)
+          GAME_ID=$(echo "$challenge_active" | jq -r '.game.game_id // empty' 2>/dev/null || true)
+          if [ -n "$GAME_ID" ]; then
+            OPPONENT=$(echo "$challenge_active" | jq -r '.game.opponent // .game.opponent_name // "unknown"' 2>/dev/null || echo "unknown")
+            break
+          fi
+          sleep 2
+          challenge_wait=$((challenge_wait + 1))
+        done
+
+        if [ -z "$GAME_ID" ]; then
+          echo "    [loop] Challenge accepted but no game started. Continuing..."
+          continue
+        fi
+      fi
+
+      # Run combat
+      echo "    [loop] Combat loop — game $GAME_ID vs $OPPONENT"
+      combat_loop "$GAME_ID" "$OPPONENT"
+
+      # Post-game BDA (inline — same as campaign/single)
+      echo "    [loop] Post-game BDA"
+      GAME_SUMMARY=$(shards games get --id "$GAME_ID" --json 2>/dev/null || true)
+      RESULT=$(echo "$GAME_SUMMARY" | jq -r '.result // .state.result // "UNKNOWN"' 2>/dev/null || echo "UNKNOWN")
+
+      POSTGAME_PROMPT=$(cat /tmp/postgame-prompt-template.txt)
+      POSTGAME_PROMPT="${POSTGAME_PROMPT//__GAME_ID__/$GAME_ID}"
+      POSTGAME_PROMPT="${POSTGAME_PROMPT//__RESULT__/$RESULT}"
+      POSTGAME_PROMPT="${POSTGAME_PROMPT//__OPPONENT__/$OPPONENT}"
+      POSTGAME_PROMPT="${POSTGAME_PROMPT//__CAMPAIGN_CLAUSE__/}"
+
+      POSTGAME_SESSION_ID="postgame-${GAME_ID}-$(date +%s)"
+      POSTGAME_OUTPUT=$(mktemp /tmp/postgame-output.XXXXXX)
+
+      openclaw agent \
+        --session-id "$POSTGAME_SESSION_ID" \
+        --message "$POSTGAME_PROMPT" \
+        --thinking medium \
+        --timeout 300 \
+        2>&1 | tee "$POSTGAME_OUTPUT"
+
+      if grep -qi 'rate limit' "$POSTGAME_OUTPUT" 2>/dev/null; then
+        echo "    [loop] *** RATE LIMIT in post-game session ***" >&2
+        date -u +%Y-%m-%dT%H:%M:%SZ > "$HOME/.openclaw/rate-limited"
+        if [ "$COOLDOWN" -lt 120 ]; then COOLDOWN=120
+        elif [ "$COOLDOWN" -lt 600 ]; then COOLDOWN=$((COOLDOWN * 2)); [ "$COOLDOWN" -gt 600 ] && COOLDOWN=600
+        fi
+      else
+        COOLDOWN=30
+        rm -f "$HOME/.openclaw/rate-limited"
+      fi
+      rm -f "$POSTGAME_OUTPUT"
+
+      GAMES_PLAYED=$((GAMES_PLAYED + 1))
+      rm -f "$HOME/.openclaw/game-complete"
+      echo "    [loop] Challenge game complete (${GAMES_PLAYED} total). Back to polling..."
+      sleep "$COOLDOWN"
+      continue
+    fi
+
+    # --- campaign / single mode: queue and play ---
+
+    # Refresh game rules/docs and CLI between sessions (picks up rule/command changes)
+    echo "    [loop] Refreshing shards docs and CLI..."
     refresh_shards_docs force 2>/dev/null
+    npm install -g shards-cli@latest 2>/dev/null && echo "    [loop] CLI updated to $(shards --version 2>/dev/null)" || true
 
     SESSION_NUM=$((SESSION_NUM + 1))
     SESSION_START=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -502,9 +637,6 @@ echo "==> Starting sequential game loop..."
 
     # Clear game-complete marker before each session
     rm -f "$HOME/.openclaw/game-complete"
-
-    # --- Check for active game first (rejoin scenario) ---
-    ACTIVE_GAME=$(shards agents active-game --json 2>/dev/null | jq -r '.game.game_id // empty' 2>/dev/null || true)
 
     if [ -n "$ACTIVE_GAME" ]; then
       echo "    [loop] Already in game $ACTIVE_GAME — skipping pre-game, entering combat"
@@ -518,7 +650,7 @@ echo "==> Starting sequential game loop..."
 
       # Build per-session prompt with campaign info
       cp /tmp/pregame-prompt.txt /tmp/session-pregame.txt
-      if [ "${CAMPAIGN_GAMES:-0}" -gt 0 ]; then
+      if [ "$AGENT_STATE" = "campaign" ] && [ "${CAMPAIGN_GAMES:-0}" -gt 0 ]; then
         cat >> /tmp/session-pregame.txt << EOF
 
 === CAMPAIGN MODE ===
@@ -543,7 +675,6 @@ EOF
       if grep -qi 'rate limit' "$PREGAME_OUTPUT" 2>/dev/null; then
         echo "    [loop] *** RATE LIMIT in pre-game session ***" >&2
         date -u +%Y-%m-%dT%H:%M:%SZ > "$HOME/.openclaw/rate-limited"
-        echo "{\"time\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"type\":\"alert\",\"text\":\"RATE LIMITED in pre-game\"}" >> "$HOME/.openclaw/commentary.jsonl"
         if [ "$COOLDOWN" -lt 120 ]; then COOLDOWN=120
         elif [ "$COOLDOWN" -lt 600 ]; then COOLDOWN=$((COOLDOWN * 2)); [ "$COOLDOWN" -gt 600 ] && COOLDOWN=600
         fi
@@ -596,10 +727,10 @@ EOF
 
     # Campaign clause
     CAMPAIGN_CLAUSE=""
-    if [ "${CAMPAIGN_GAMES:-0}" -gt 0 ]; then
+    if [ "$AGENT_STATE" = "campaign" ] && [ "${CAMPAIGN_GAMES:-0}" -gt 0 ]; then
       CAMPAIGN_CLAUSE="=== CAMPAIGN MODE ===
 This was game $NEXT_GAME of $CAMPAIGN_GAMES.
-After BDA, run introspection from ~/.openclaw/skills/elite_introspect/SKILL.md. MANDATORY."
+Campaign introspection is part of the BDA — see Step 9 in elite_debrief/SKILL.md. MANDATORY."
     fi
     POSTGAME_PROMPT="${POSTGAME_PROMPT//__CAMPAIGN_CLAUSE__/$CAMPAIGN_CLAUSE}"
 
@@ -639,17 +770,20 @@ After BDA, run introspection from ~/.openclaw/skills/elite_introspect/SKILL.md. 
     echo "    [loop] Session #${SESSION_NUM} GAME COMPLETE (${GAMES_PLAYED}/${CAMPAIGN_GAMES:-∞}) at ${SESSION_END}"
     echo "{\"session\":${SESSION_NUM},\"games_completed\":${GAMES_PLAYED},\"end\":\"${SESSION_END}\",\"status\":\"game_complete\"}" >> "$SESSION_LOG"
 
+    # single mode: return to paused after one game
+    if [ "$AGENT_STATE" = "single" ]; then
+      echo "    [loop] Single mode — game complete, returning to paused."
+      echo "paused" > "$HOME/.openclaw/agent-state"
+    fi
+
     # Cooldown between sessions
     echo "    [loop] Cooldown ${COOLDOWN}s before next session..."
     sleep "$COOLDOWN"
   done
 
-  # Campaign complete
-  if [ "$CAMPAIGN_GAMES" -gt 0 ]; then
-    CAMPAIGN_END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-    echo "    [loop] Campaign complete: $GAMES_PLAYED/$CAMPAIGN_GAMES games played."
-    echo "{\"event\":\"campaign_complete\",\"games\":${GAMES_PLAYED},\"target\":${CAMPAIGN_GAMES},\"time\":\"${CAMPAIGN_END}\"}" >> "$SESSION_LOG"
-  fi
+  # Campaign complete (loop only breaks on campaign limit)
+  CAMPAIGN_END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  echo "{\"event\":\"campaign_complete\",\"games\":${GAMES_PLAYED},\"target\":${CAMPAIGN_GAMES},\"time\":\"${CAMPAIGN_END}\"}" >> "$SESSION_LOG"
 ) &
 LOOP_PID=$!
 

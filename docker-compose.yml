@@ -12,8 +12,15 @@ services:
       XDG_CONFIG_HOME: /home/node/.config
       XDG_DATA_HOME: /home/node/.local/share
       XDG_CACHE_HOME: /home/node/.cache
-      CAMPAIGN_GAMES: "10"
-      CAMPAIGN_MODE: "casual"
+      CAMPAIGN_GAMES: "${CAMPAIGN_GAMES:-10}"
+      AGENT_STATE: "${AGENT_STATE:-paused}"
+      QUEUE_MODE: "${QUEUE_MODE:-casual}"
+      # LLM provider: "openai-codex" (cloud, needs OAuth) or "ollama" (local)
+      LLM_PROVIDER: "${LLM_PROVIDER:-openai-codex}"
+      # Ollama model to use when LLM_PROVIDER=ollama (ignored for cloud)
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:14b}"
+      # Ollama host — host.docker.internal resolves to the Mac's localhost from inside Docker
+      OLLAMA_HOST: "${OLLAMA_HOST:-http://host.docker.internal:11434}"
 
     volumes:
       # Persistent state — only dirs the agent actually needs

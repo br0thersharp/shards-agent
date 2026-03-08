@@ -1,0 +1,950 @@
+[
+  {
+    "turn": 1,
+    "p1_hp": 30,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      1
+    ],
+    "p2_energy": [
+      0,
+      0
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_28",
+        "card_id": "MC-A-U002"
+      },
+      {
+        "iid": "card_24",
+        "card_id": "MC-A-C007"
+      },
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_27",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [],
+    "p1_resources": [],
+    "p2_resources": [],
+    "p2_hand_count": 7
+  },
+  {
+    "turn": 3,
+    "p1_hp": 30,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      3
+    ],
+    "p2_energy": [
+      0,
+      1
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_28",
+        "card_id": "MC-A-U002"
+      },
+      {
+        "iid": "card_24",
+        "card_id": "MC-A-C007"
+      },
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_27",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      },
+      {
+        "iid": "card_33",
+        "card_id": "MC-A-U011"
+      },
+      {
+        "iid": "card_25",
+        "card_id": "MC-A-C013"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [],
+    "p1_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p2_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      }
+    ],
+    "p2_hand_count": 5
+  },
+  {
+    "turn": 5,
+    "p1_hp": 28,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      4
+    ],
+    "p2_energy": [
+      0,
+      2
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_28",
+        "card_id": "MC-A-U002"
+      },
+      {
+        "iid": "card_24",
+        "card_id": "MC-A-C007"
+      },
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_27",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      },
+      {
+        "iid": "card_25",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_38",
+        "card_id": "MC-A-R001"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [],
+    "p1_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p2_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      }
+    ],
+    "p2_hand_count": 3
+  },
+  {
+    "turn": 7,
+    "p1_hp": 28,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      6
+    ],
+    "p2_energy": [
+      0,
+      3
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_27",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      },
+      {
+        "iid": "card_25",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_38",
+        "card_id": "MC-A-R001"
+      },
+      {
+        "iid": "card_16",
+        "card_id": "MC-A-C005"
+      },
+      {
+        "iid": "card_19",
+        "card_id": "MC-A-C006"
+      },
+      {
+        "iid": "card_11",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_13",
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C002",
+        "power": 2,
+        "defense": 3,
+        "keywords": [
+          "persistent"
+        ],
+        "tapped": false
+      }
+    ],
+    "p1_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p2_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      }
+    ],
+    "p2_hand_count": 2
+  },
+  {
+    "turn": 9,
+    "p1_hp": 22,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      8
+    ],
+    "p2_energy": [
+      0,
+      4
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_27",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      },
+      {
+        "iid": "card_25",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_38",
+        "card_id": "MC-A-R001"
+      },
+      {
+        "iid": "card_16",
+        "card_id": "MC-A-C005"
+      },
+      {
+        "iid": "card_19",
+        "card_id": "MC-A-C006"
+      },
+      {
+        "iid": "card_11",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_13",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_5",
+        "card_id": "MC-A-U001"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C002",
+        "power": 2,
+        "defense": 3,
+        "keywords": [
+          "persistent"
+        ],
+        "tapped": true
+      }
+    ],
+    "p1_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p2_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      }
+    ],
+    "p2_hand_count": 0
+  },
+  {
+    "turn": 11,
+    "p1_hp": 20,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      9
+    ],
+    "p2_energy": [
+      0,
+      5
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_27",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      },
+      {
+        "iid": "card_25",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_16",
+        "card_id": "MC-A-C005"
+      },
+      {
+        "iid": "card_19",
+        "card_id": "MC-A-C006"
+      },
+      {
+        "iid": "card_11",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_13",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_5",
+        "card_id": "MC-A-U001"
+      },
+      {
+        "iid": "card_26",
+        "card_id": "MC-A-C013"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C002",
+        "power": 2,
+        "defense": 3,
+        "keywords": [
+          "persistent"
+        ],
+        "tapped": true
+      }
+    ],
+    "p1_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p2_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      }
+    ],
+    "p2_hand_count": 0
+  },
+  {
+    "turn": 13,
+    "p1_hp": 18,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      10
+    ],
+    "p2_energy": [
+      0,
+      6
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_27",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      },
+      {
+        "iid": "card_16",
+        "card_id": "MC-A-C005"
+      },
+      {
+        "iid": "card_19",
+        "card_id": "MC-A-C006"
+      },
+      {
+        "iid": "card_11",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_13",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_5",
+        "card_id": "MC-A-U001"
+      },
+      {
+        "iid": "card_26",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_8",
+        "card_id": "MC-A-C003"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C002",
+        "power": 2,
+        "defense": 3,
+        "keywords": [
+          "persistent"
+        ],
+        "tapped": true
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C005",
+        "power": 3,
+        "defense": 4,
+        "keywords": [],
+        "tapped": false
+      }
+    ],
+    "p1_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p2_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      }
+    ],
+    "p2_hand_count": 0
+  },
+  {
+    "turn": 15,
+    "p1_hp": 13,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      10
+    ],
+    "p2_energy": [
+      0,
+      7
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      },
+      {
+        "iid": "card_16",
+        "card_id": "MC-A-C005"
+      },
+      {
+        "iid": "card_19",
+        "card_id": "MC-A-C006"
+      },
+      {
+        "iid": "card_11",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_13",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_5",
+        "card_id": "MC-A-U001"
+      },
+      {
+        "iid": "card_26",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_8",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_39",
+        "card_id": "MC-A-U005"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [],
+    "p1_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p2_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      }
+    ],
+    "p2_hand_count": 0
+  },
+  {
+    "turn": 17,
+    "p1_hp": 10,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      10
+    ],
+    "p2_energy": [
+      0,
+      8
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      },
+      {
+        "iid": "card_16",
+        "card_id": "MC-A-C005"
+      },
+      {
+        "iid": "card_19",
+        "card_id": "MC-A-C006"
+      },
+      {
+        "iid": "card_11",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_13",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_26",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_8",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_39",
+        "card_id": "MC-A-U005"
+      },
+      {
+        "iid": "card_34",
+        "card_id": "MC-A-U011"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C001",
+        "power": 1,
+        "defense": 3,
+        "keywords": [],
+        "tapped": true
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C005",
+        "power": 3,
+        "defense": 4,
+        "keywords": [],
+        "tapped": false
+      }
+    ],
+    "p1_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p2_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      }
+    ],
+    "p2_hand_count": 0
+  },
+  {
+    "turn": 19,
+    "p1_hp": 4,
+    "p2_hp": 30,
+    "p1_energy": [
+      0,
+      10
+    ],
+    "p2_energy": [
+      0,
+      9
+    ],
+    "p1_hand": [
+      {
+        "iid": "card_7",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_30",
+        "card_id": "MC-A-U004"
+      },
+      {
+        "iid": "card_36",
+        "card_id": "MC-A-E001"
+      },
+      {
+        "iid": "card_14",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_31",
+        "card_id": "MC-A-U007"
+      },
+      {
+        "iid": "card_16",
+        "card_id": "MC-A-C005"
+      },
+      {
+        "iid": "card_19",
+        "card_id": "MC-A-C006"
+      },
+      {
+        "iid": "card_11",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_13",
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": "card_26",
+        "card_id": "MC-A-C013"
+      },
+      {
+        "iid": "card_8",
+        "card_id": "MC-A-C003"
+      },
+      {
+        "iid": "card_34",
+        "card_id": "MC-A-U011"
+      },
+      {
+        "iid": "card_18",
+        "card_id": "MC-A-C006"
+      }
+    ],
+    "p1_board": [],
+    "p2_board": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C001",
+        "power": 1,
+        "defense": 3,
+        "keywords": [],
+        "tapped": true
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C005",
+        "power": 3,
+        "defense": 4,
+        "keywords": [],
+        "tapped": true
+      }
+    ],
+    "p1_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-A-C004"
+      }
+    ],
+    "p2_resources": [
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      },
+      {
+        "iid": null,
+        "card_id": "MC-C-C004"
+      }
+    ],
+    "p2_hand_count": 0
+  }
+]

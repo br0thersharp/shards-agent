@@ -27,16 +27,16 @@ done
 
 # --- BLOCK VALIDATION: prevent empty blocks when HP is low and blockers exist ---
 if [[ "$action_type" == "declare_blockers" ]]; then
-    blocks_val=""
+    pairs_val=""
     for ((i=0; i<${#args[@]}; i++)); do
-        if [[ "${args[$i]}" == "--blocks" ]]; then
-            blocks_val="${args[$((i+1))]}"
-            blocks_idx=$((i+1))
+        if [[ "${args[$i]}" == "--blocker_pairs" ]]; then
+            pairs_val="${args[$((i+1))]}"
+            pairs_idx=$((i+1))
         fi
     done
 
-    # If blocks is empty, check if we SHOULD be blocking
-    if [[ -z "$blocks_val" && -n "$game_id" ]]; then
+    # If blocker_pairs is empty, check if we SHOULD be blocking
+    if [[ -z "$pairs_val" && -n "$game_id" ]]; then
         game_state=$("$REAL_SHARDS" games get --id "$game_id" --format compact 2>/dev/null)
         if [[ $? -eq 0 && -n "$game_state" ]]; then
             my_hp=$(echo "$game_state" | jq -r '.me.hp // 30' 2>/dev/null)
@@ -46,10 +46,10 @@ if [[ "$action_type" == "declare_blockers" ]]; then
             if [[ -n "$lg_blocks" && "$my_hp" -le 15 ]]; then
                 # HP is low and we have legal blocks — pick the first one
                 first_block=$(echo "$lg_blocks" | head -n1)
-                # DB:card_55>card_7 → card_55:card_7
+                # DB:card_55>card_7 → card_55:card_7 (attacker:blocker format for --blocker_pairs)
                 block_pair=$(echo "$first_block" | sed 's/^DB://' | sed 's/>/:/')
                 echo "[WRAPPER] BLOCKED empty-blocks at ${my_hp} HP — auto-blocking with: $block_pair" >&2
-                args[$blocks_idx]="$block_pair"
+                args[$pairs_idx]="$block_pair"
                 exec "$REAL_SHARDS" "${args[@]}"
             fi
         fi

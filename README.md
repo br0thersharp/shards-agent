@@ -147,13 +147,16 @@ At container startup, `entrypoint.sh` reads this file and calls `shards config s
 
 The agent runs on [OpenClaw](https://openclaw.dev), which provides the `openclaw` CLI and gateway process. OpenClaw handles LLM authentication, session management, and tool execution.
 
-Authentication uses **OAuth via OpenAI Codex** (the provider that backs agent sessions). To set this up:
+You have two options for the LLM backend:
+
+#### Option A: Cloud LLM (OpenAI Codex — default)
+
+Uses OpenAI's Codex API via OAuth. Smarter model, but requires an OpenAI account and is subject to rate limits.
 
 ```bash
 mkdir -p ~/ocbox/openclaw-state
 
 # Run openclaw login interactively to complete the OAuth flow.
-# This creates openclaw.json with your auth profile.
 openclaw login --provider openai-codex
 ```
 
@@ -172,7 +175,41 @@ The OAuth flow will open a browser window. After authenticating, OpenClaw writes
 }
 ```
 
-The resulting `openclaw.json` (and related state) lives in `~/ocbox/openclaw-state/`, which is mounted into the agent container at `/home/node/.openclaw/`.
+#### Option B: Local LLM (Ollama)
+
+Runs a model on your own machine. No API keys, no rate limits, no cost. Requires a machine with enough RAM (16-24GB recommended).
+
+**Install Ollama:**
+
+```bash
+# macOS
+brew install ollama
+brew services start ollama
+
+# Linux
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**Pull a model:**
+
+```bash
+# Recommended for 24GB RAM (M2/M3 Mac or similar)
+ollama pull qwen2.5:14b
+
+# Lighter option for 16GB RAM
+ollama pull qwen2.5:7b
+
+# Heavier option for 32GB+ RAM (slower but smarter)
+ollama pull qwen2.5:32b
+```
+
+Verify it's running: `curl -s http://localhost:11434/api/tags | jq '.models[].name'`
+
+No `openclaw.json` auth setup is needed for Ollama — the entrypoint configures it automatically.
+
+---
+
+The `openclaw.json` (and related state) lives in `~/ocbox/openclaw-state/`, which is mounted into the agent container at `/home/node/.openclaw/`.
 
 ### 3. Local directory structure
 
@@ -194,8 +231,14 @@ The `strategy/` directory and its contents are created by the agent on first run
 ### 4. Build and run
 
 ```bash
-# Build and start both agent and dashboard
+# Cloud mode (default — uses OpenAI Codex, requires OAuth setup)
 docker compose up --build -d
+
+# Local mode (uses Ollama on your machine — no API keys needed)
+LLM_PROVIDER=ollama docker compose up --build -d
+
+# With a specific model
+LLM_PROVIDER=ollama OLLAMA_MODEL=qwen2.5:32b docker compose up --build -d
 
 # Watch agent logs
 docker logs -f oc-agent
@@ -205,28 +248,34 @@ docker logs -f oc-agent
 
 ### 5. Configuration
 
-Edit `docker-compose.yml` to adjust campaign settings:
+All settings can be passed as environment variables to `docker compose up`:
 
-```yaml
-environment:
-  CAMPAIGN_GAMES: "10"     # Number of games per campaign (0 = infinite)
-  CAMPAIGN_MODE: "casual"  # "casual" or "ranked"
+```bash
+# Example: local LLM, 5-game ranked campaign
+LLM_PROVIDER=ollama CAMPAIGN_GAMES=5 CAMPAIGN_MODE=ranked docker compose up --build -d
 ```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLM_PROVIDER` | `openai-codex` | `openai-codex` (cloud) or `ollama` (local) |
+| `OLLAMA_MODEL` | `qwen2.5:14b` | Ollama model name (only used when `LLM_PROVIDER=ollama`) |
+| `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama API URL (change if running on a remote machine) |
+| `CAMPAIGN_GAMES` | `10` | Number of games per campaign (`0` = infinite) |
+| `AGENT_STATE` | `paused` | Initial agent state: `paused`, `campaign`, `challengers`, `single` |
+| `QUEUE_MODE` | `casual` | `casual` or `ranked` |
 
 ### Operations
 
 ```bash
-# Pause the agent (finishes current game, won't queue for new ones)
-touch ~/ocbox/openclaw-state/paused
+# Agent states (default is paused)
+echo "paused" > ~/ocbox/openclaw-state/agent-state       # Do nothing
+echo "campaign" > ~/ocbox/openclaw-state/agent-state     # Loop games
+echo "challengers" > ~/ocbox/openclaw-state/agent-state  # Accept incoming challenges only
+echo "single" > ~/ocbox/openclaw-state/agent-state       # Play one game, then pause
 
-# Unpause
-rm ~/ocbox/openclaw-state/paused
-
-# Switch to ranked mode
-touch ~/ocbox/openclaw-state/ranked
-
-# Switch back to casual
-rm ~/ocbox/openclaw-state/ranked
+# Queue mode
+echo "ranked" > ~/ocbox/openclaw-state/queue-mode
+echo "casual" > ~/ocbox/openclaw-state/queue-mode
 
 # Rebuild after code changes
 docker compose up --build -d agent
@@ -244,9 +293,11 @@ entrypoint.sh          — Main harness (phases, combat loop, encouragement)
 shards-wrapper.sh      — CLI safety layer (self-target, empty-block, pass validation)
 Dockerfile             — Agent container build
 docker-compose.yml     — Agent + dashboard services
-dashboard/server.js    — Express API (status, commentary, scratchpad, coach)
-dashboard/public/      — SPA dashboard (live feed, game board, blob character)
+dashboard/server.js    — Express API (status, match, coach chat, state control)
+dashboard/public/      — SPA dashboard
 skills/                — Agent skill documents (read-only, mounted into container)
+skills/dossiers/       — Per-player opponent intelligence files
+training/                 — LLM benchmark, trainer, and game replay tools
 ```
 
 ## State (shared volume)
@@ -254,10 +305,48 @@ skills/                — Agent skill documents (read-only, mounted into contai
 ```
 ~/ocbox/openclaw-state/
   strategy/strategy.md   — Compacted strategy (rewritten after every game)
-  strategy/notes.md      — Raw BDA journal
-  commentary.jsonl       — Live commentary feed
   sessions.jsonl         — Session loop events
-  game-log-{id}.txt      — Per-game scratchpad
-  paused                 — Pause marker
-  ranked                 — Ranked mode marker
+  agent-state            — Agent mode: paused|campaign|challengers|single
+  queue-mode             — Queue type: casual|ranked
+  rate-limited           — Rate limit marker (timestamp)
+  game-complete          — Per-game completion signal
+  coach-msg.txt          — Coach message for agent (per-game, wiped on game end)
+  coach-reply.txt        — Agent reply to coach (per-game, wiped on game end)
+  coach-history.jsonl    — Coach chat history (per-game, wiped on game end)
+```
+
+## Opponent Dossier System
+
+Per-player intelligence files in `skills/dossiers/players/`. Each file tracks:
+- Confirmed deck lists (card IDs, costs, stats)
+- Playstyle analysis and win conditions
+- Specific counter-strategies
+- Match history with HHR
+
+The dossier index (`skills/dossiers/DOSSIERS.md`) has faction-level intel.
+When a game starts, the harness loads the opponent's dossier (if one exists) into
+the agent's session context.
+
+## LLM Trainer
+
+The test harness (`training/`) includes tools for offline evaluation and iterative
+skill-doc refinement:
+
+- **`training/llm-benchmark.py`** — Replays board state snapshots and grades LLM
+  decisions against expert rubrics (resource play, creature deployment, removal
+  targeting, attack declarations).
+- **`training/train-from-game.py`** — Turnkey trainer. Point it at any game ID:
+  1. Fetches the full replay via `shards` CLI
+  2. Uses LLM introspection to identify suboptimal turns
+  3. Generates board snapshots for those turns
+  4. Iteratively patches the system prompt with behavioral doctrines
+  5. Converges on >= 85% optimal play or fails out with a report
+  6. Cuts a git branch with the refined prompt and training log
+
+```bash
+# Train from a specific game
+python3 training/train-from-game.py --game-id <id> --provider ollama --model qwen2.5:14b
+
+# Skip git branch (dry run)
+python3 training/train-from-game.py --game-id <id> --no-git --verbose
 ```

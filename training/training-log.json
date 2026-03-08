@@ -1,0 +1,71 @@
+{
+  "model": "qwen2.5:14b",
+  "target": 85,
+  "rounds": [
+    {
+      "round": 1,
+      "score": 40,
+      "patches": [],
+      "failures": {
+        "no_creature": 1,
+        "no_bomb": 1,
+        "wasted_energy": 1,
+        "no_removal": 1,
+        "no_attack": 1
+      }
+    },
+    {
+      "round": 2,
+      "score": 63,
+      "patches": [
+        "removal_doctrine",
+        "board_presence",
+        "finisher_deployment",
+        "attack_doctrine",
+        "energy_efficiency"
+      ],
+      "failures": {
+        "wasted_energy": 1,
+        "no_bomb": 1,
+        "no_attack": 1
+      }
+    },
+    {
+      "round": 3,
+      "score": 77,
+      "patches": [
+        "removal_doctrine",
+        "board_presence",
+        "finisher_deployment",
+        "attack_doctrine",
+        "energy_efficiency"
+      ],
+      "failures": {
+        "wasted_energy": 1,
+        "no_bomb": 1
+      }
+    },
+    {
+      "round": 4,
+      "score": 87,
+      "patches": [
+        "removal_doctrine",
+        "board_presence",
+        "finisher_deployment",
+        "attack_doctrine",
+        "energy_efficiency"
+      ],
+      "failures": {
+        "no_bomb": 1
+      }
+    }
+  ],
+  "final_patches": {
+    "removal_doctrine": 1,
+    "board_presence": 1,
+    "finisher_deployment": 3,
+    "attack_doctrine": 2,
+    "energy_efficiency": 3
+  },
+  "final_prompt_length": 3151
+}

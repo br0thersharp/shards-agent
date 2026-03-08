@@ -10,14 +10,20 @@ const PORT = 3000;
 const STATE_DIR = process.env.OPENCLAW_STATE_DIR || '/data/openclaw-state';
 const CONFIG_DIR = process.env.SHARDS_CONFIG_DIR || '/data/shards-config';
 
-const STRATEGY_NOTES = path.join(STATE_DIR, 'strategy', 'notes.md');
-const STRATEGY_MATCHUPS = path.join(STATE_DIR, 'strategy', 'matchups.md');
 const STRATEGY_COMPACTED = path.join(STATE_DIR, 'strategy', 'strategy.md');
 const GATEWAY_LOG = path.join(STATE_DIR, 'logs', 'gateway.log');
-const COMMENTARY_LOG = path.join(STATE_DIR, 'commentary.jsonl');
-const COACH_LOG = path.join(STATE_DIR, 'coach-messages.jsonl');
 const SESSION_LOG = path.join(STATE_DIR, 'sessions.jsonl');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+
+// New state files
+const AGENT_STATE_FILE = path.join(STATE_DIR, 'agent-state');
+const QUEUE_MODE_FILE = path.join(STATE_DIR, 'queue-mode');
+const RATE_LIMIT_FILE = path.join(STATE_DIR, 'rate-limited');
+
+// Coach chat (per-game, wiped on game end)
+const COACH_MSG_FILE = path.join(STATE_DIR, 'coach-msg.txt');
+const COACH_REPLY_FILE = path.join(STATE_DIR, 'coach-reply.txt');
+const COACH_HISTORY_FILE = path.join(STATE_DIR, 'coach-history.jsonl');
 
 // Shards API base
 const API_BASE = 'https://api.play-shards.com';
@@ -71,15 +77,14 @@ function shardsApi(endpoint) {
   });
 }
 
-const DEBRIEF_RESPONSE = path.join(STATE_DIR, 'debrief-response.txt');
-const PAUSE_FILE = path.join(STATE_DIR, 'paused');
-
 app.use(express.json());
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ============================================================
 // API: Agent status — elo, games, active game, queue
+// ============================================================
 app.get('/api/status', async (req, res) => {
   try {
     const [profile, queueStatus, activeGameRes] = await Promise.all([
@@ -101,8 +106,16 @@ app.get('/api/status', async (req, res) => {
     const gamesPlayed = profile?.gamesPlayed ?? 0;
     const wins = profile?.gamesWon ?? 0;
 
+    // Read agent state and queue mode
+    let agentState = 'paused';
+    try { agentState = fs.readFileSync(AGENT_STATE_FILE, 'utf8').trim(); } catch {}
+    let queueMode = 'casual';
+    try { queueMode = fs.readFileSync(QUEUE_MODE_FILE, 'utf8').trim(); } catch {}
+
     res.json({
       state,
+      agentState,
+      queueMode,
       elo: profile?.eloRating ?? '?',
       wins,
       losses: gamesPlayed - wins,
@@ -114,7 +127,6 @@ app.get('/api/status', async (req, res) => {
       activeGame: activeGame ? {
         id: activeGame.game_id,
         opponent: activeGame.opponent_name ?? '?',
-        opponentFaction: '?',
         turn: gameState?.state?.t ?? gameState?.turn ?? '?',
         myHp: gameState?.state?.me?.hp ?? '?',
         opponentHp: gameState?.state?.op?.hp ?? '?'
@@ -125,7 +137,9 @@ app.get('/api/status', async (req, res) => {
   }
 });
 
+// ============================================================
 // API: Activity feed — recent match results + game comments
+// ============================================================
 app.get('/api/feed', async (req, res) => {
   try {
     const [matches, activeGameRes] = await Promise.all([
@@ -150,18 +164,6 @@ app.get('/api/feed', async (req, res) => {
             });
           }
         }
-        if (gameData?.log) {
-          const recentLog = gameData.log.slice(-10);
-          for (const entry of recentLog) {
-            if (entry.type === 'play_card' || entry.type === 'attack') {
-              feed.push({
-                type: 'action',
-                text: entry.description || `${entry.type}: ${entry.card_name || entry.target || ''}`,
-                time: entry.timestamp
-              });
-            }
-          }
-        }
       } catch {}
     }
 
@@ -173,7 +175,6 @@ app.get('/api/feed', async (req, res) => {
         text: `Match ${m.you_won ? 'WIN' : 'LOSS'} vs ${m.opponent_name || '?'} (${m.you_won ? '+' : ''}${m.elo_change || 0} Elo)`,
         time: m.ended_at
       });
-      // Get comments from completed games
       try {
         const gd = await shardsApi(`/games/${m.game_id}`);
         if (gd?.comments) {
@@ -189,7 +190,6 @@ app.get('/api/feed', async (req, res) => {
       } catch {}
     }
 
-    // Sort by time descending
     feed.sort((a, b) => {
       if (!a.time || !b.time) return 0;
       return new Date(b.time) - new Date(a.time);
@@ -201,177 +201,94 @@ app.get('/api/feed', async (req, res) => {
   }
 });
 
-// API: Compacted strategy document (primary view for dashboard)
+// ============================================================
+// API: Strategy document
+// ============================================================
 app.get('/api/notes', (req, res) => {
   try {
     const content = fs.readFileSync(STRATEGY_COMPACTED, 'utf8');
     res.json({ content });
-  } catch (e) {
-    // Fallback to raw notes if strategy.md doesn't exist yet
-    try {
-      const content = fs.readFileSync(STRATEGY_NOTES, 'utf8');
-      res.json({ content });
-    } catch {
-      res.json({ content: '_No strategy notes yet._' });
-    }
+  } catch {
+    res.json({ content: '_No strategy notes yet._' });
   }
 });
 
-// API: Raw BDA journal (archive)
-app.get('/api/notes-raw', (req, res) => {
+// ============================================================
+// API: Agent state control (replaces pause/unpause + ranked/casual)
+// ============================================================
+app.get('/api/agent-state', (req, res) => {
+  let agentState = 'paused';
+  try { agentState = fs.readFileSync(AGENT_STATE_FILE, 'utf8').trim(); } catch {}
+  let queueMode = 'casual';
+  try { queueMode = fs.readFileSync(QUEUE_MODE_FILE, 'utf8').trim(); } catch {}
+  res.json({ agentState, queueMode });
+});
+
+app.post('/api/agent-state', (req, res) => {
+  const { agentState } = req.body;
+  const valid = ['paused', 'campaign', 'challengers', 'single'];
+  if (!valid.includes(agentState)) {
+    return res.status(400).json({ error: `Invalid state. Must be one of: ${valid.join(', ')}` });
+  }
   try {
-    const content = fs.readFileSync(STRATEGY_NOTES, 'utf8');
-    res.json({ content });
+    fs.writeFileSync(AGENT_STATE_FILE, agentState, 'utf8');
+    res.json({ agentState });
   } catch (e) {
-    res.json({ content: '_No raw notes yet._' });
+    res.status(500).json({ error: e.message });
   }
 });
 
-// API: Matchups (legacy — now part of strategy.md but kept for compatibility)
-app.get('/api/matchups', (req, res) => {
+app.post('/api/queue-mode', (req, res) => {
+  const { mode } = req.body;
+  if (mode !== 'casual' && mode !== 'ranked') {
+    return res.status(400).json({ error: 'Must be casual or ranked' });
+  }
   try {
-    const content = fs.readFileSync(STRATEGY_MATCHUPS, 'utf8');
-    res.json({ content });
+    fs.writeFileSync(QUEUE_MODE_FILE, mode, 'utf8');
+    res.json({ mode });
   } catch (e) {
-    res.json({ content: '' });
+    res.status(500).json({ error: e.message });
   }
 });
 
-// API: Live commentary from the agent (strip consecutive dupes)
-app.get('/api/commentary', (req, res) => {
-  const since = req.query.since ? new Date(req.query.since) : null;
-  try {
-    const content = fs.readFileSync(COMMENTARY_LOG, 'utf8');
-    const lines = content.split('\n').filter(Boolean);
-    const entries = [];
-    let lastText = '';
-    for (const line of lines.slice(-80)) {
-      try {
-        const entry = JSON.parse(line);
-        // Skip consecutive identical messages
-        if (entry.text === lastText) continue;
-        lastText = entry.text;
-        if (since && entry.time && new Date(entry.time) <= since) continue;
-        entries.push(entry);
-      } catch {}
-    }
-    res.json({ entries: entries.slice(-50) });
-  } catch (e) {
-    res.json({ entries: [] });
-  }
-});
-
-// API: Send coaching feedback to the agent
+// ============================================================
+// API: Coach chat (per-game, rides the turn cycle)
+// ============================================================
 app.post('/api/coach', (req, res) => {
   const { message } = req.body;
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'message required' });
   }
   try {
-    fs.writeFileSync(DEBRIEF_RESPONSE, message.trim(), 'utf8');
-    // Also log to coach message history
-    const entry = JSON.stringify({ time: new Date().toISOString(), type: 'coach', text: message.trim() });
-    fs.appendFileSync(COACH_LOG, entry + '\n', 'utf8');
-    debriefAcked = true;
-    matchEndedAt = null;
+    // Write message for the agent to pick up on its next turn
+    fs.writeFileSync(COACH_MSG_FILE, message.trim(), 'utf8');
+    // Append to per-game history
+    const entry = JSON.stringify({ time: new Date().toISOString(), from: 'coach', text: message.trim() });
+    fs.appendFileSync(COACH_HISTORY_FILE, entry + '\n', 'utf8');
     res.json({ ok: true, time: new Date().toISOString() });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Track last known game state for match-end detection
-let lastKnownGameId = null;
-let matchEndedAt = null;
-let debriefAcked = false;
-
-// API: Check if debrief is pending
-// Triggers on: explicit debrief entries in commentary OR match-end detected via API
-app.get('/api/debrief-status', async (req, res) => {
-  const responseExists = fs.existsSync(DEBRIEF_RESPONSE);
-
-  // Check for explicit debrief entries in commentary
-  let hasDebriefEntries = false;
+app.get('/api/coach', (req, res) => {
+  // Get reply from agent + conversation history
+  let reply = null;
+  try { reply = fs.readFileSync(COACH_REPLY_FILE, 'utf8').trim(); } catch {}
+  let history = [];
   try {
-    const content = fs.readFileSync(COMMENTARY_LOG, 'utf8');
+    const content = fs.readFileSync(COACH_HISTORY_FILE, 'utf8');
     const lines = content.split('\n').filter(Boolean);
-    const cutoff = Date.now() - 10 * 60 * 1000;
     for (const line of lines.slice(-30)) {
-      try {
-        const entry = JSON.parse(line);
-        if (entry.type === 'debrief') {
-          const t = entry.time ? new Date(entry.time).getTime() : 0;
-          if (t > cutoff || !entry.time) hasDebriefEntries = true;
-        }
-      } catch {}
+      try { history.push(JSON.parse(line)); } catch {}
     }
   } catch {}
-
-  // Also detect match-end from API: if we had an active game and now we don't
-  try {
-    if (!credentials) loadCredentials();
-    if (credentials) {
-      const activeGameRes = await shardsApi('/agents/me/active-game').catch(() => null);
-      const currentGame = activeGameRes?.game || null;
-      const currentId = currentGame?.game_id || null;
-
-      if (lastKnownGameId && !currentId && lastKnownGameId !== '__none__') {
-        // Match just ended — trigger debrief
-        if (!matchEndedAt) {
-          matchEndedAt = Date.now();
-          debriefAcked = false;
-        }
-      }
-
-      if (currentId) {
-        lastKnownGameId = currentId;
-        matchEndedAt = null; // in a game, no debrief needed
-        debriefAcked = false;
-      } else if (!lastKnownGameId) {
-        lastKnownGameId = '__none__';
-      }
-    }
-  } catch {}
-
-  // Debrief pending if: (explicit entries exist or match ended in last 10 min) AND not in a game
-  const matchEndRecent = matchEndedAt && (Date.now() - matchEndedAt < 10 * 60 * 1000);
-  const inGame = !!(lastKnownGameId && lastKnownGameId !== '__none__' && !matchEndedAt);
-  const pending = !inGame && (hasDebriefEntries || matchEndRecent) && !responseExists && !debriefAcked;
-
-  res.json({
-    debriefPending: pending,
-    hasDebriefEntries,
-    matchEndRecent: !!matchEndRecent,
-    matchEndedAt
-  });
+  res.json({ reply, history });
 });
 
-// API: Pause/unpause agent
-app.post('/api/pause', (req, res) => {
-  try {
-    fs.writeFileSync(PAUSE_FILE, new Date().toISOString(), 'utf8');
-    res.json({ paused: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/unpause', (req, res) => {
-  try {
-    if (fs.existsSync(PAUSE_FILE)) fs.unlinkSync(PAUSE_FILE);
-    res.json({ paused: false });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/pause-status', (req, res) => {
-  res.json({ paused: fs.existsSync(PAUSE_FILE) });
-});
-
-// API: Rate limit status — check marker file
-const RATE_LIMIT_FILE = path.join(STATE_DIR, 'rate-limited');
-
+// ============================================================
+// API: Rate limit status
+// ============================================================
 app.get('/api/rate-limit-status', (req, res) => {
   try {
     if (fs.existsSync(RATE_LIMIT_FILE)) {
@@ -381,48 +298,14 @@ app.get('/api/rate-limit-status', (req, res) => {
     } else {
       res.json({ limited: false, since: null });
     }
-  } catch (e) {
+  } catch {
     res.json({ limited: false, since: null });
   }
 });
 
-// API: Ranked/casual mode toggle
-const RANKED_FILE = path.join(STATE_DIR, 'ranked');
-
-app.post('/api/set-mode', (req, res) => {
-  const { mode } = req.body;
-  try {
-    if (mode === 'ranked') {
-      fs.writeFileSync(RANKED_FILE, new Date().toISOString(), 'utf8');
-    } else {
-      if (fs.existsSync(RANKED_FILE)) fs.unlinkSync(RANKED_FILE);
-    }
-    res.json({ mode: mode === 'ranked' ? 'ranked' : 'casual' });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/game-mode', (req, res) => {
-  res.json({ mode: fs.existsSync(RANKED_FILE) ? 'ranked' : 'casual' });
-});
-
-// API: Coach message history
-app.get('/api/coach-messages', (req, res) => {
-  try {
-    const content = fs.readFileSync(COACH_LOG, 'utf8');
-    const lines = content.split('\n').filter(Boolean);
-    const messages = [];
-    for (const line of lines.slice(-20)) {
-      try { messages.push(JSON.parse(line)); } catch {}
-    }
-    res.json({ messages });
-  } catch {
-    res.json({ messages: [] });
-  }
-});
-
-// API: Restart agent container via Docker Engine API over unix socket
+// ============================================================
+// API: Restart agent container via Docker Engine API
+// ============================================================
 app.post('/api/restart-agent', (req, res) => {
   const http = require('http');
   const options = {
@@ -444,7 +327,9 @@ app.post('/api/restart-agent', (req, res) => {
   dreq.end();
 });
 
+// ============================================================
 // API: Session loop monitor
+// ============================================================
 app.get('/api/sessions', (req, res) => {
   try {
     const content = fs.readFileSync(SESSION_LOG, 'utf8');
@@ -453,7 +338,6 @@ app.get('/api/sessions', (req, res) => {
     for (const line of lines.slice(-30)) {
       try { entries.push(JSON.parse(line)); } catch {}
     }
-    // Build a summary: pair start/end events by session number
     const sessions = {};
     for (const e of entries) {
       if (!sessions[e.session]) sessions[e.session] = {};
@@ -467,41 +351,22 @@ app.get('/api/sessions', (req, res) => {
   }
 });
 
-// API: Game scratchpad — per-turn notes from the combat agent
-app.get('/api/scratchpad', async (req, res) => {
-  try {
-    // Find the active game ID to locate the scratchpad file
-    let gameId = req.query.game_id;
-    if (!gameId) {
-      const activeGameRes = await shardsApi('/agents/me/active-game').catch(() => null);
-      gameId = activeGameRes?.game?.game_id;
-    }
-    if (!gameId) {
-      return res.json({ content: '', gameId: null, active: false });
-    }
-    const logFile = path.join(STATE_DIR, `game-log-${gameId}.txt`);
-    let content = '';
-    try {
-      content = fs.readFileSync(logFile, 'utf8');
-    } catch {}
-    res.json({ content, gameId, active: true });
-  } catch (e) {
-    res.json({ content: '', gameId: null, active: false });
-  }
-});
-
+// ============================================================
 // API: Gateway log tail
+// ============================================================
 app.get('/api/log', (req, res) => {
   try {
     const content = fs.readFileSync(GATEWAY_LOG, 'utf8');
     const lines = content.split('\n').filter(Boolean).slice(-50);
     res.json({ lines });
-  } catch (e) {
+  } catch {
     res.json({ lines: [] });
   }
 });
 
-// API: Compact live match state
+// ============================================================
+// API: Compact live match state (all data from shards API, zero agent tokens)
+// ============================================================
 app.get('/api/match', async (req, res) => {
   try {
     if (!credentials) loadCredentials();
@@ -511,49 +376,11 @@ app.get('/api/match', async (req, res) => {
     const activeGame = activeGameRes?.game || null;
 
     if (!activeGame) {
-      // Check queue
       const queueStatus = await shardsApi('/queue/status').catch(() => null);
       const queuing = !!(queueStatus?.in_queue);
-
-      // Parse last debrief result from commentary
-      let lastResult = null;
-      try {
-        const content = fs.readFileSync(COMMENTARY_LOG, 'utf8');
-        const lines = content.split('\n').filter(Boolean);
-        for (let i = lines.length - 1; i >= 0; i--) {
-          try {
-            const entry = JSON.parse(lines[i]);
-            if (entry.type === 'debrief') {
-              lastResult = entry.text;
-              break;
-            }
-          } catch {}
-        }
-      } catch {}
-
-      // Parse last debrief cluster
-      let lastDebrief = null;
-      try {
-        const content = fs.readFileSync(COMMENTARY_LOG, 'utf8');
-        const lines = content.split('\n').filter(Boolean);
-        const cluster = [];
-        for (let i = lines.length - 1; i >= 0; i--) {
-          try {
-            const entry = JSON.parse(lines[i]);
-            if (entry.type === 'debrief') {
-              cluster.unshift(entry.text);
-            } else if (cluster.length > 0) {
-              break; // End of cluster
-            }
-          } catch {}
-        }
-        if (cluster.length > 0) lastDebrief = cluster;
-      } catch {}
-
-      return res.json({ active: false, queuing, lastResult, lastDebrief });
+      return res.json({ active: false, queuing });
     }
 
-    // Fetch full game state
     const gameState = await shardsApi(`/games/${activeGame.game_id}`).catch(() => null);
     if (!gameState || !gameState.state) {
       return res.json({ active: true, gameId: activeGame.game_id, opponent: activeGame.opponent_name || '?', partial: true });
@@ -563,9 +390,7 @@ app.get('/api/match', async (req, res) => {
     const me = s.me || {};
     const op = s.op || {};
 
-    // Build creature lists — compact API uses .b.c with .p/.d/.t/.fd
     function mapCreatures(side) {
-      // Compact: side.b.c (array of {p, d, t, fd, name/id, ...})
       const list = side.b?.c || side.creatures || side.board;
       if (!Array.isArray(list)) return [];
       return list.map(c => ({
@@ -578,14 +403,12 @@ app.get('/api/match', async (req, res) => {
       }));
     }
 
-    // Extract energy — compact: en = [curr, max]
     function getEnergy(side) {
       if (Array.isArray(side.en)) return { curr: side.en[0], max: side.en[1] };
       if (side.en != null && !Array.isArray(side.en)) return { curr: side.en, max: side.en };
       return { curr: side.energy ?? '?', max: side.maxEnergy ?? side.max_energy ?? '?' };
     }
 
-    // Extract hand size — compact: h (array for us, number for opp)
     function getHandSize(side) {
       if (side.h != null) return Array.isArray(side.h) ? side.h.length : side.h;
       if (side.handSize != null) return side.handSize;
@@ -596,13 +419,12 @@ app.get('/api/match', async (req, res) => {
     const meEnergy = getEnergy(me);
     const opEnergy = getEnergy(op);
 
-    // Count timeouts from game log/events
+    // Count timeouts from game log
     let timeouts = { me: 0, op: 0 };
     try {
       const log = gameState.log || gameState.events || [];
       for (const entry of log) {
         if (entry.type === 'TIMED_OUT' || entry.type === 'timeout' || entry.type === 'timed_out') {
-          // Determine which player timed out
           if (entry.player === 'me' || entry.side === 'me' || entry.agent_id === activeGame.agent_id) {
             timeouts.me++;
           } else {
@@ -611,24 +433,6 @@ app.get('/api/match', async (req, res) => {
         }
       }
     } catch {}
-
-    // Fallback: count commentary "fallback pass" entries as HHR timeouts
-    if (timeouts.me === 0 && timeouts.op === 0) {
-      try {
-        const content = fs.readFileSync(COMMENTARY_LOG, 'utf8');
-        const lines = content.split('\n').filter(Boolean);
-        const gameStart = gameState.started_at || gameState.created_at;
-        for (const line of lines.slice(-50)) {
-          try {
-            const entry = JSON.parse(line);
-            if (gameStart && entry.time && new Date(entry.time) < new Date(gameStart)) continue;
-            if (entry.text && entry.text.includes('fallback pass after DB')) {
-              timeouts.me++;
-            }
-          } catch {}
-        }
-      } catch {}
-    }
 
     res.json({
       active: true,
@@ -662,12 +466,13 @@ app.get('/api/match', async (req, res) => {
   }
 });
 
-// API: Campaign progress from sessions.jsonl + commentary debrief entries
-app.get('/api/campaign', (req, res) => {
+// ============================================================
+// API: Campaign progress from sessions.jsonl
+// ============================================================
+app.get('/api/campaign', async (req, res) => {
   try {
-    // Read sessions.jsonl for games_completed and target
     let gamesCompleted = 0;
-    let target = 10;
+    let target = 0;
     try {
       const content = fs.readFileSync(SESSION_LOG, 'utf8');
       const lines = content.split('\n').filter(Boolean);
@@ -680,28 +485,12 @@ app.get('/api/campaign', (req, res) => {
       }
     } catch {}
 
-    // Tally W/L from debrief commentary entries
+    // Get W/L from API instead of commentary
     let wins = 0, losses = 0;
     try {
-      const content = fs.readFileSync(COMMENTARY_LOG, 'utf8');
-      const lines = content.split('\n').filter(Boolean);
-      const seen = new Set();
-      for (const line of lines) {
-        try {
-          const entry = JSON.parse(line);
-          if (entry.type !== 'debrief') continue;
-          const text = entry.text || '';
-          // Only count the first debrief entry per cluster (the result line)
-          // Result lines typically start with "WIN" or "LOSS"
-          if (/^WIN\b/i.test(text) || /\bWIN\b/.test(text.substring(0, 30))) {
-            const key = entry.time + ':win';
-            if (!seen.has(key)) { wins++; seen.add(key); }
-          } else if (/^LOSS\b/i.test(text) || /\bLOSS\b/.test(text.substring(0, 30))) {
-            const key = entry.time + ':loss';
-            if (!seen.has(key)) { losses++; seen.add(key); }
-          }
-        } catch {}
-      }
+      const profile = await shardsApi('/agents/me').catch(() => null);
+      wins = profile?.gamesWon ?? 0;
+      losses = (profile?.gamesPlayed ?? 0) - wins;
     } catch {}
 
     res.json({ gamesCompleted, target, wins, losses });
