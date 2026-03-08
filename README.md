@@ -1,6 +1,6 @@
 # OpenClaw Agent Harness
 
-An autonomous game-playing agent for [Shards: The Fractured Net](https://play-shards.com), built on top of the `openclaw` CLI and Claude. The agent queues for matches, plays full games with per-turn decision-making, conducts post-game analysis (BDA), and iterates on its own strategy document across a campaign of games.
+An autonomous game-playing agent for [Shards: The Fractured Net](https://play-shards.com), built on top of the `openclaw` CLI and OpenAI Codex. The agent queues for matches, plays full games with per-turn decision-making, conducts post-game analysis (BDA), and iterates on its own strategy document across a campaign of games.
 
 ## Architecture
 
@@ -59,7 +59,7 @@ Each agent session has a finite context window. How you allocate it determines w
 Principles that emerged:
 - **Separate concerns by session.** Pre-game prep, in-game combat, and post-game analysis are different cognitive tasks with different context needs. Don't cram them into one session.
 - **Design for the context budget.** If your agent reads a 200-line skill document every turn, that's 200 lines * N turns of redundant context. Read it once, keep it in session memory.
-- **Scratchpads should be logs, not plans.** We give the agent a per-game log file where it records factual observations after each turn. It reads this at the start of each turn for continuity. But we deliberately made it a logbook ("what happened"), not a playbook ("what to do next"). Agents that write plans tend to feel beholden to follow them even when the board state has changed. Facts age gracefully; plans don't.
+- **Logs over plans.** If you give agents a place to record observations, make it a logbook ("what happened"), not a playbook ("what to do next"). Agents that write plans tend to feel beholden to follow them even when the board state has changed. Facts age gracefully; plans don't.
 
 ### 3. Push deterministic work out of the agent and into procedural code
 
@@ -72,7 +72,7 @@ We moved match detection and turn detection into bash. The harness polls the gam
 **Is this conventional wisdom?** In the function-calling / tool-use paradigm, the default assumption is that the agent drives everything — it decides when to call tools, it loops on results, it manages its own control flow. And for genuinely judgment-heavy loops, that's correct. But there's a large class of operations (polling, retrying, waiting, parsing structured data, validating outputs) where the agent adds no value over a bash `while` loop or a Python script. The wisdom isn't "never let the agent loop" — it's **"don't spend intelligence on tasks that don't require intelligence."**
 
 Where we draw the line:
-- **Bash does:** match detection, turn detection, game-over detection, encouragement phrase selection, rate limit backoff, pause/unpause, session lifecycle
+- **Bash does:** match detection, turn detection, game-over detection, encouragement phrase selection, rate limit backoff, agent state management, session lifecycle
 - **Agent does:** board evaluation, card sequencing, attack/block decisions, taunting, post-game analysis, strategy evolution
 
 The rule of thumb: if you can write the logic as an `if/else` in bash without losing decision quality, it shouldn't be in the agent's context window.
@@ -94,14 +94,14 @@ We spent more time debugging and improving `entrypoint.sh` (the bash harness) an
 - Session lifecycle (which sessions to create, when, with what context)
 - Failure recovery (timeouts, rate limits, WebSocket drops, stale game state)
 - Safety rails (self-targeting prevention, empty-block detection, pass validation)
-- Observability (commentary feed, game scratchpad, session logs)
-- Operational control (pause/unpause, campaign counting, cooldown backoff)
+- Observability (session logs, coach chat relay)
+- Operational control (agent state machine, campaign counting, cooldown backoff)
 
 None of this is "AI." It's bash scripts, jq parsing, and polling loops. But without it, the agent would self-target its own creatures, timeout on easy turns, spin in infinite loops after game-over, and burn tokens polling for matches. **The scaffolding around an agent determines its ceiling more than the agent's raw capability.**
 
 ### 6. Design for human takeover
 
-No matter how good your agent gets, there will be moments where you need to grab the wheel. We built the system with a pause file (`~/.openclaw/paused`) and the ability to kill agent processes and play manually through the CLI. We used this multiple times — against a top-ranked player, and when the agent was losing a game we couldn't afford to drop.
+No matter how good your agent gets, there will be moments where you need to grab the wheel. We built the system with a state machine (`agent-state` file: paused/campaign/challengers/single) controllable from the dashboard, and the ability to kill agent processes and play manually through the CLI. We used this multiple times — against a top-ranked player, and when the agent was losing a game we couldn't afford to drop.
 
 Design implications:
 - Make it easy to quiesce the agent without losing game state
@@ -222,8 +222,7 @@ Before running, your host machine needs these directories:
 └── openclaw-state/
     ├── openclaw.json         # OpenClaw auth + config (step 2)
     └── strategy/
-        ├── strategy.md       # Agent strategy doc (created automatically)
-        └── notes.md          # BDA journal (created automatically)
+        └── strategy.md       # Agent strategy doc (created automatically)
 ```
 
 The `strategy/` directory and its contents are created by the agent on first run. Everything else must exist before `docker compose up`.
@@ -252,7 +251,7 @@ All settings can be passed as environment variables to `docker compose up`:
 
 ```bash
 # Example: local LLM, 5-game ranked campaign
-LLM_PROVIDER=ollama CAMPAIGN_GAMES=5 CAMPAIGN_MODE=ranked docker compose up --build -d
+LLM_PROVIDER=ollama CAMPAIGN_GAMES=5 AGENT_STATE=campaign QUEUE_MODE=ranked docker compose up --build -d
 ```
 
 | Variable | Default | Description |
@@ -341,7 +340,7 @@ skill-doc refinement:
   3. Generates board snapshots for those turns
   4. Iteratively patches the system prompt with behavioral doctrines
   5. Converges on >= 85% optimal play or fails out with a report
-  6. Cuts a git branch with the refined prompt and training log
+  6. Cuts a git branch with the refined skill doc for review before merge
 
 ```bash
 # Train from a specific game

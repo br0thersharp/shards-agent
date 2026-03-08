@@ -1,71 +1,46 @@
 {
-  "model": "qwen2.5:14b",
+  "game_id": "e2f4e290-4a00-43e9-a295-d659462db07b",
+  "model": "ollama/qwen2.5:14b",
   "target": 85,
+  "converged": true,
+  "final_score": 100,
   "rounds": [
     {
       "round": 1,
-      "score": 40,
+      "score": 75,
       "patches": [],
       "failures": {
-        "no_creature": 1,
-        "no_bomb": 1,
-        "wasted_energy": 1,
-        "no_removal": 1,
-        "no_attack": 1
-      }
+        "no_resource": 1
+      },
+      "converged_turns": [
+        12
+      ]
     },
     {
       "round": 2,
-      "score": 63,
+      "score": 100,
       "patches": [
-        "removal_doctrine",
-        "board_presence",
-        "finisher_deployment",
-        "attack_doctrine",
-        "energy_efficiency"
+        "resource_play"
       ],
-      "failures": {
-        "wasted_energy": 1,
-        "no_bomb": 1,
-        "no_attack": 1
-      }
+      "failures": {},
+      "converged_turns": [
+        12,
+        14
+      ]
+    }
+  ],
+  "bad_turns": [
+    {
+      "turn": 12,
+      "description": "T12: Played multiple cards without declaring attackers or using removal, leading to a loss of health and board control."
     },
     {
-      "round": 3,
-      "score": 77,
-      "patches": [
-        "removal_doctrine",
-        "board_presence",
-        "finisher_deployment",
-        "attack_doctrine",
-        "energy_efficiency"
-      ],
-      "failures": {
-        "wasted_energy": 1,
-        "no_bomb": 1
-      }
-    },
-    {
-      "round": 4,
-      "score": 87,
-      "patches": [
-        "removal_doctrine",
-        "board_presence",
-        "finisher_deployment",
-        "attack_doctrine",
-        "energy_efficiency"
-      ],
-      "failures": {
-        "no_bomb": 1
-      }
+      "turn": 14,
+      "description": "T14: Played multiple cards without declaring attackers or using removal, leading to a loss of health and board control."
     }
   ],
   "final_patches": {
-    "removal_doctrine": 1,
-    "board_presence": 1,
-    "finisher_deployment": 3,
-    "attack_doctrine": 2,
-    "energy_efficiency": 3
+    "resource_play": 1
   },
-  "final_prompt_length": 3151
+  "summary": "Game e2f4e290: 100% (converged), 2 rounds, 2 turns trained"
 }

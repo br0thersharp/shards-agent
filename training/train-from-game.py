@@ -31,6 +31,25 @@ from datetime import datetime
 
 
 # ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+def get_agent_id():
+    """Read our agent ID from shards config."""
+    candidates = [
+        os.path.expanduser('~/ocbox/shards-config/config.json'),
+        os.path.expanduser('~/.config/shards/config.json'),
+    ]
+    for path in candidates:
+        try:
+            with open(path) as f:
+                return json.load(f)['agent_id']
+        except (FileNotFoundError, KeyError, json.JSONDecodeError):
+            continue
+    raise RuntimeError("Could not find agent_id in shards config. Check ~/ocbox/shards-config/config.json")
+
+
+# ---------------------------------------------------------------------------
 # Shards CLI helpers
 # ---------------------------------------------------------------------------
 
@@ -304,16 +323,23 @@ def query_llm(model, prompt, provider='ollama', host='http://localhost:11434', a
 
 def introspect_game(replay, summary, snapshots, model, provider, host, api_key):
     """Use LLM to identify which turns had suboptimal play and build rubrics."""
-    # Build a concise game summary for the LLM
     result = summary.get('results', {})
-    winner_name = result.get('winnerName', '?')
     p1 = result.get('player1', {})
     p2 = result.get('player2', {})
-    my_hp = p1.get('finalHp', '?')
-    op_hp = p2.get('finalHp', '?')
-    turns = summary.get('turns', len(snapshots))
 
-    # Build turn-by-turn action summary
+    # Figure out which side is ours
+    our_agent_id = get_agent_id()
+    if p1.get('agentId') == our_agent_id:
+        my_info, op_info = p1, p2
+    else:
+        my_info, op_info = p2, p1
+
+    won = my_info.get('isWinner', False)
+    opponent_name = op_info.get('name', '?')
+    end_reason = result.get('endReason', '?')
+    turns = len(snapshots)
+
+    # Build turn-by-turn action summary from snapshots (p1 = us in snapshot space)
     action_summary = []
     for snap in snapshots:
         actions = snap.get('actions_taken', [])
@@ -329,7 +355,7 @@ def introspect_game(replay, summary, snapshots, model, provider, host, api_key):
 
     prompt = f"""You are a Shards: The Fractured Net expert analyst. Review this game replay and identify the WORST turns — turns where the player made suboptimal decisions.
 
-GAME RESULT: {'WIN' if p1.get('isWinner') else 'LOSS'}, HP {my_hp}-{op_hp}, {turns} turns, vs {winner_name if not p1.get('isWinner') else p2.get('name', '?')}
+GAME RESULT: {'WIN' if won else 'LOSS'} vs {opponent_name}, {turns} turns, ended by {end_reason}
 
 TURN-BY-TURN:
 {chr(10).join(action_summary)}
@@ -775,15 +801,20 @@ def main():
     result = summary.get('results', {})
     p1 = result.get('player1', {})
     p2 = result.get('player2', {})
-    won = p1.get('isWinner', False)
-    print(f"  Result: {'WIN' if won else 'LOSS'}, HP {p1.get('finalHp', '?')}-{p2.get('finalHp', '?')}")
 
     # Determine which player we are (our agent ID)
-    our_agent_id = '532f418a-85eb-4cc8-b156-26b838739b86'
+    our_agent_id = get_agent_id()
     if p1.get('agentId') == our_agent_id or p1.get('agent_id') == our_agent_id:
         my_player = 'p1'
+        my_info, op_info = p1, p2
     else:
         my_player = 'p2'
+        my_info, op_info = p2, p1
+
+    won = my_info.get('isWinner', False)
+    opponent_name = op_info.get('name', '?')
+    end_reason = result.get('endReason', summary.get('end_reason', '?'))
+    print(f"  Result: {'WIN' if won else 'LOSS'} vs {opponent_name} ({end_reason})")
     print(f"  We are: {my_player}")
 
     # Step 2: Fetch event history and extract snapshots
@@ -836,19 +867,26 @@ def main():
     print(f"\n[4/5] Training (max {args.rounds} rounds, target {args.target}%)...")
     patches = copy.deepcopy(PATCH_LIBRARY)
     history = []
+    converged_turns = set()  # turns that hit target — stop testing them
 
     for round_num in range(1, args.rounds + 1):
         # Build the full skill doc with patches applied — this is what we're testing
         system_prompt = apply_patches_to_doc(base_doc, patches)
         active_patches = [p['id'] for p in patches.values() if p['weight'] > 0]
 
+        # Only test turns that haven't converged yet
+        remaining_snapshots = [s for s in train_snapshots if s['turn'] not in converged_turns]
+        if not remaining_snapshots:
+            print(f"\n  *** ALL TURNS CONVERGED ***")
+            break
+
         print(f"\n  --- Round {round_num}/{args.rounds} ---")
         print(f"  Patches: {active_patches or '(baseline)'}")
-        print(f"  Doc size: {len(system_prompt)} chars")
+        print(f"  Turns remaining: {sorted(s['turn'] for s in remaining_snapshots)}")
 
         round_result = run_training_round(
             args.model, args.provider, args.host, args.api_key,
-            system_prompt, train_snapshots, rubric, card_db, args.game_id
+            system_prompt, remaining_snapshots, rubric, card_db, args.game_id
         )
 
         print(f"  Score: {round_result['total_score']}/{round_result['total_max']} ({round_result['overall_pct']}%)")
@@ -856,7 +894,11 @@ def main():
         for r in round_result['results']:
             bar = '#' * (r['pct'] // 10) + '-' * (10 - r['pct'] // 10)
             fail_str = f" [{', '.join(r['failures'])}]" if r['failures'] else ''
-            print(f"    T{r['turn']:<3} {r['score']:>2}/{r['max']:<2} ({r['pct']:>3}%) [{bar}]{fail_str}")
+            conv_str = ''
+            if r['pct'] >= args.target:
+                converged_turns.add(r['turn'])
+                conv_str = ' DONE'
+            print(f"    T{r['turn']:<3} {r['score']:>2}/{r['max']:<2} ({r['pct']:>3}%) [{bar}]{fail_str}{conv_str}")
             if args.verbose and 'response' in r:
                 for line in r['response'].strip().split('\n')[:5]:
                     print(f"         | {line[:100]}")
@@ -866,11 +908,13 @@ def main():
             'score': round_result['overall_pct'],
             'patches': list(active_patches),
             'failures': dict(round_result['failure_counts']),
+            'converged_turns': sorted(converged_turns),
         })
 
-        # Check convergence
-        if round_result['overall_pct'] >= args.target:
-            print(f"\n  *** CONVERGED at {round_result['overall_pct']}% ***")
+        # Check if all turns converged
+        all_turns = {s['turn'] for s in train_snapshots}
+        if converged_turns >= all_turns:
+            print(f"\n  *** ALL TURNS CONVERGED ***")
             break
 
         # Check if stuck — escalate the worst failure
@@ -891,8 +935,9 @@ def main():
 
     # Step 5: Results
     final_doc = apply_patches_to_doc(base_doc, patches)
+    all_turns = {s['turn'] for s in train_snapshots}
+    converged = converged_turns >= all_turns
     final_score = history[-1]['score'] if history else 0
-    converged = final_score >= args.target
 
     print(f"\n{'='*60}")
     print(f"  TRAINING {'CONVERGED' if converged else 'FAILED TO CONVERGE'}")

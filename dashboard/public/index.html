@@ -56,10 +56,9 @@
   .dashboard {
     display: grid;
     grid-template-columns: 200px 1fr 1fr;
-    grid-template-rows: 36px auto 1fr 1fr 38px;
+    grid-template-rows: 36px 1fr 1fr 38px;
     grid-template-areas:
       "header  header  header"
-      "debrief debrief debrief"
       "sidebar board   feed"
       "sidebar comms   notes"
       "coach   coach   coach";
@@ -67,7 +66,7 @@
     width: 100vw;
   }
 
-  /* ─── HEADER ─── */
+  /* --- HEADER --- */
   .header {
     grid-area: header;
     background: var(--bg-panel);
@@ -85,7 +84,6 @@
   .state-idle { color: var(--green); border-color: var(--green-dim); }
   .state-queue { color: var(--amber); border-color: var(--amber-dim); }
   .state-combat { color: var(--red); border-color: var(--red-dim); }
-  .state-debrief { color: var(--amber); border-color: var(--amber-dim); }
 
   .header-readouts { display: flex; gap: 14px; align-items: center; margin-left: 8px; }
   .readout { display: flex; align-items: baseline; gap: 4px; }
@@ -95,209 +93,253 @@
   .header-controls { margin-left: auto; display: flex; gap: 6px; align-items: center; }
   .header-btn { background: transparent; border: 1px solid; font-family: 'Courier New', Consolas, monospace; font-size: 9px; font-weight: bold; padding: 3px 10px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: background 0.15s; }
   .header-btn:hover { background: rgba(255,255,255,0.05); }
+  .header-btn:disabled { opacity: 0.4; cursor: default; }
 
-  /* ─── DEBRIEF BANNER ─── */
-  .debrief-banner { grid-area: debrief; display: none; background: linear-gradient(90deg, var(--bg-primary), var(--amber-dim), var(--bg-primary)); padding: 5px 20px; text-align: center; font-size: 10px; font-weight: bold; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; border-bottom: 1px solid var(--amber-dim); }
-  body.debrief-mode .debrief-banner { display: block; }
-  body.debrief-mode .header { border-bottom-color: var(--amber-dim); }
-  body.debrief-mode .header h1 { color: var(--amber); text-shadow: var(--amber-glow); }
-  body.debrief-mode .coach-box { border-top: 2px solid var(--amber); background: #0f0d08; box-shadow: 0 -4px 20px rgba(255, 184, 0, 0.15); }
-  body.debrief-mode .coach-box input { border-color: var(--amber-dim); background: #1a1508; }
-  body.debrief-mode .coach-box input:focus { border-color: var(--amber); box-shadow: 0 0 8px rgba(255, 184, 0, 0.2); }
-  body.debrief-mode .coach-box button { background: var(--amber); color: var(--bg-primary); border-color: var(--amber); }
-  @keyframes debrief-arrow-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-  body.debrief-mode .coach-box .coach-prompt { animation: debrief-arrow-pulse 1.5s infinite; }
-  @keyframes debrief-border-pulse { 0%, 100% { border-color: var(--amber-dim); } 50% { border-color: var(--amber); } }
-  body.debrief-mode .coach-box { animation: debrief-border-pulse 2s infinite; }
+  /* --- AGENT STATE DROPDOWN --- */
+  .state-select-wrap { position: relative; display: inline-block; }
+  .state-select {
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--amber-dim);
+    color: var(--amber);
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 22px 3px 10px;
+    cursor: pointer;
+  }
+  .state-select:focus { outline: none; border-color: var(--amber); }
+  .state-select-wrap::after {
+    content: '\25BC';
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 7px;
+    color: var(--amber-dim);
+    pointer-events: none;
+  }
 
-  /* ─── SIDEBAR ─── */
+  /* --- RATE LIMIT BANNER --- */
+  .rate-limit-banner { display: none; background: linear-gradient(90deg, var(--bg-primary), var(--red-dim), var(--bg-primary)); padding: 5px 20px; text-align: center; font-size: 10px; font-weight: bold; color: var(--red); letter-spacing: 3px; text-transform: uppercase; }
+  body.rate-limited .rate-limit-banner { display: block; }
+
+  /* --- SIDEBAR --- */
   .sidebar {
     grid-area: sidebar;
     background: var(--bg-panel);
-    border-right: 1px solid var(--border);
+    border-right: 1px solid var(--border-dim);
     display: flex;
     flex-direction: column;
-    overflow: visible;
+    overflow: hidden;
   }
 
-  .blob-wrap { width: 200px; height: 160px; position: relative; flex-shrink: 0; overflow: visible; z-index: 10; }
-  #blobCanvas { width: 100%; height: 100%; }
+  .blob-wrap {
+    width: 200px; height: 200px;
+    display: flex; align-items: center; justify-content: center;
+    border-bottom: 1px solid var(--border-dim);
+    position: relative;
+  }
+  .blob-wrap canvas { width: 100%; height: 100%; }
 
-  .sidebar-stats { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
-  .sidebar-section-title { font-size: 9px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; padding-bottom: 3px; border-bottom: 1px solid var(--border); margin-top: 2px; }
+  .sidebar-stats { padding: 8px 10px; flex: 1; overflow-y: auto; }
+  .sidebar-section-title { font-size: 8px; color: var(--text-label); text-transform: uppercase; letter-spacing: 3px; margin-top: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--border-dim); padding-bottom: 2px; }
+  .sidebar-section-title:first-child { margin-top: 0; }
   .sidebar-row { display: flex; justify-content: space-between; align-items: center; padding: 1px 0; }
   .sidebar-label { font-size: 8px; color: var(--text-label); text-transform: uppercase; letter-spacing: 2px; }
-  .sidebar-value { font-size: 11px; font-weight: bold; color: var(--text-primary); }
-  .campaign-bar { background: var(--bg-inset); height: 4px; margin-top: 2px; overflow: hidden; }
-  .campaign-bar-fill { background: var(--green); height: 100%; transition: width 0.5s ease; }
+  .sidebar-value { font-size: 11px; color: var(--text-primary); font-weight: bold; }
 
-  /* W/L Graph */
-  .wl-graph-area { padding: 6px 10px; flex: 1; min-height: 80px; }
-  .wl-graph-area .sidebar-section-title { margin-bottom: 4px; }
-  .wl-graph-canvas { width: 100%; height: 100%; min-height: 60px; }
+  .campaign-bar { width: 100%; height: 4px; background: var(--bg-inset); border: 1px solid var(--border-dim); margin-top: 2px; }
+  .campaign-bar-fill { height: 100%; background: var(--green); box-shadow: var(--green-glow); transition: width 0.5s; }
 
-  /* ─── BOARD AREA ─── */
+  .wl-graph-area { padding: 6px; border-top: 1px solid var(--border-dim); }
+  .wl-graph-canvas { width: 100%; height: 80px; display: block; }
+
+  /* --- BOARD AREA --- */
   .board-area {
     grid-area: board;
-    background: var(--bg-primary);
-    border-right: 1px solid var(--border);
+    background: var(--bg-inset);
+    border: 1px solid var(--border-dim);
+    border-top: 0;
     padding: 10px;
     overflow-y: auto;
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    align-items: center;
+    justify-content: center;
   }
 
-  .combat-board h2, .bda-card h2 { font-size: 10px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
-  .combat-board h2 { color: var(--red); }
-  .board-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .opponent-name { color: var(--red); font-weight: bold; font-size: 13px; text-shadow: var(--red-glow); }
-  .turn-info { color: var(--text-dim); font-size: 11px; }
-  .player-row { padding: 8px 10px; background: var(--bg-inset); margin-bottom: 6px; border-left: 3px solid var(--text-dim); }
-  .player-row.me { border-left-color: var(--green); }
-  .player-row.op { border-left-color: var(--red); }
+  .idle-hint { color: var(--text-dim); font-size: 11px; text-align: center; }
+  .combat-board { width: 100%; }
+  .combat-board h2 { font-size: 10px; color: var(--green); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; text-shadow: var(--green-glow); }
+  .board-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .opponent-name { font-size: 12px; font-weight: bold; color: var(--red); }
+  .turn-info { font-size: 10px; color: var(--text-dim); }
+  .player-row { padding: 8px; border: 1px solid var(--border-dim); margin-bottom: 4px; }
+  .player-row.me { border-color: var(--green-dim); }
+  .player-row.op { border-color: var(--red-dim); }
   .player-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-  .player-name { font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; }
+  .player-name { font-size: 10px; font-weight: bold; letter-spacing: 2px; }
   .player-row.me .player-name { color: var(--green); }
   .player-row.op .player-name { color: var(--red); }
-  .player-stats { display: flex; gap: 12px; font-size: 11px; color: var(--text-dim); }
-  .hp-display { display: flex; align-items: center; gap: 6px; }
-  .hp-number { font-weight: bold; font-size: 16px; }
-  .player-row.me .hp-number { color: var(--green); text-shadow: var(--green-glow); }
-  .player-row.op .hp-number { color: var(--red); text-shadow: var(--red-glow); }
-  .hp-bar { width: 80px; height: 3px; background: var(--border); overflow: hidden; }
-  .hp-bar-fill { height: 100%; transition: width 0.3s ease; }
-  .player-row.me .hp-bar-fill { background: var(--green); }
+  .hp-display { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .hp-number { font-size: 20px; font-weight: bold; }
+  .player-row.me .hp-number { color: var(--green); }
+  .player-row.op .hp-number { color: var(--red); }
+  .hp-bar { flex: 1; height: 4px; background: var(--bg-primary); border: 1px solid var(--border-dim); }
+  .hp-bar-fill { height: 100%; background: var(--green); transition: width 0.5s; }
   .player-row.op .hp-bar-fill { background: var(--red); }
-  .timeout-badge { font-size: 10px; padding: 1px 6px; border: 1px solid var(--border); color: var(--text-dim); }
-  .timeout-badge.warn { color: var(--amber); border-color: var(--amber-dim); }
-  .timeout-badge.danger { color: var(--red); border-color: var(--red-dim); }
-  .match-creatures { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-  .creature-tag { background: var(--bg-panel); border: 1px solid var(--border); padding: 2px 6px; font-size: 10px; color: var(--text-primary); white-space: nowrap; display: flex; align-items: center; gap: 3px; }
-  .creature-tag .c-name { color: var(--text-primary); }
-  .creature-tag .c-stats { color: var(--green); font-weight: bold; }
-  .creature-tag.tapped { opacity: 0.4; border-style: dashed; }
-  .creature-tag.face-down { color: var(--text-dim); border-color: var(--text-dim); }
-  .match-divider { border-top: 1px dashed var(--border); margin: 4px 0; text-align: center; position: relative; }
-  .match-divider span { background: var(--bg-primary); padding: 0 8px; font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; position: relative; top: -8px; }
-  .match-waiting { color: var(--amber); font-size: 11px; margin-top: 6px; text-align: center; }
-  .queue-display { text-align: center; padding: 30px 20px; }
-  .queue-display .timer { font-size: 32px; font-weight: bold; color: var(--amber); text-shadow: var(--amber-glow); }
-  @keyframes search-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-  .queue-display .searching { color: var(--amber); font-size: 11px; margin-bottom: 12px; animation: search-pulse 1.5s infinite; text-transform: uppercase; letter-spacing: 2px; }
-  .bda-card { background: var(--bg-panel); border: 1px solid var(--border); padding: 12px; }
-  .bda-card .bda-line { padding: 4px 0; font-size: 12px; line-height: 1.5; color: var(--text-primary); border-bottom: 1px solid var(--border-dim); }
-  .bda-card .bda-line:last-child { border-bottom: none; }
-  .bda-card .bda-result { color: var(--green); font-weight: bold; font-size: 13px; }
-  .bda-card .bda-result.loss { color: var(--red); }
-  .bda-card .bda-label { color: var(--text-label); font-size: 8px; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 2px; }
-  .idle-hint { text-align: center; color: var(--text-dim); font-size: 11px; padding: 30px 20px; text-transform: uppercase; letter-spacing: 2px; }
+  .player-stats { display: flex; gap: 10px; font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+  .match-creatures { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .creature-tag { font-size: 9px; padding: 2px 6px; border: 1px solid var(--border); background: var(--bg-panel); display: inline-flex; gap: 4px; }
+  .creature-tag.tapped { opacity: 0.5; border-style: dashed; }
+  .creature-tag.face-down { color: var(--text-dim); font-style: italic; }
+  .c-name { color: var(--text-primary); }
+  .c-stats { color: var(--amber); font-weight: bold; }
+  .match-divider { text-align: center; font-size: 8px; color: var(--text-label); letter-spacing: 4px; padding: 4px 0; }
+  .match-waiting { text-align: center; font-size: 10px; color: var(--text-dim); padding: 6px; }
+  .timeout-badge { font-size: 8px; padding: 1px 4px; border: 1px solid var(--text-dim); color: var(--text-dim); }
+  .timeout-badge.warn { border-color: var(--amber); color: var(--amber); }
+  .timeout-badge.danger { border-color: var(--red); color: var(--red); animation: blink 0.5s infinite; }
+  @keyframes blink { 50% { opacity: 0.3; } }
 
-  /* ─── FEED (right column, top half) ─── */
+  .queue-display { text-align: center; }
+  .queue-display .searching { font-size: 11px; color: var(--amber); letter-spacing: 2px; text-transform: uppercase; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  .queue-display .timer { font-size: 28px; color: var(--text-dim); margin-top: 8px; }
+
+  .bda-card { padding: 10px; }
+  .bda-card h2 { font-size: 10px; color: var(--green); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
+  .bda-line { font-size: 11px; line-height: 1.6; color: var(--text-dim); }
+  .bda-label { color: var(--text-label); font-size: 8px; text-transform: uppercase; letter-spacing: 2px; margin-right: 6px; }
+  .bda-result { font-weight: bold; color: var(--green); }
+  .bda-result.loss { color: var(--red); }
+
+  /* --- FEED AREA --- */
   .feed-area {
     grid-area: feed;
     background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-top: 0;
+    border-left: 0;
+    padding: 8px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-bottom: 1px solid var(--border);
   }
 
-  .feed-area h3 { font-size: 9px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; padding: 8px 10px 6px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .feed-scroll { flex: 1; overflow-y: auto; padding: 4px 10px; display: flex; flex-direction: column; }
-  .feed-entry { padding: 3px 0; font-size: 11px; border-bottom: 1px solid var(--border-dim); line-height: 1.4; }
-  .feed-entry.taunt { color: var(--amber); }
-  .feed-entry.taunt::before { content: '> '; color: var(--green); }
-  .feed-entry.action { color: var(--text-primary); }
-  .feed-entry.action::before { content: '> '; color: var(--green); }
-  .feed-entry.result { font-weight: bold; }
+  .feed-area h3 { font-size: 9px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 6px; flex-shrink: 0; }
+
+  .feed-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--green-dim) var(--bg-inset); }
+  .feed-scroll::-webkit-scrollbar { width: 4px; }
+  .feed-scroll::-webkit-scrollbar-track { background: var(--bg-inset); }
+  .feed-scroll::-webkit-scrollbar-thumb { background: var(--green-dim); }
+
+  .feed-entry { font-size: 11px; line-height: 1.4; padding: 2px 0; border-bottom: 1px solid var(--border-dim); color: var(--text-dim); }
+  .feed-entry.result { color: var(--text-primary); font-weight: bold; }
   .feed-entry.result.win { color: var(--green); }
   .feed-entry.result.loss { color: var(--red); }
-  .feed-entry.assessment { color: var(--amber); }
-  .feed-entry.assessment::before { content: '[ODDS] '; color: var(--amber); font-weight: bold; }
-  .feed-entry.play { color: var(--green); }
-  .feed-entry.play::before { content: '[PLAY] '; color: var(--green); font-weight: bold; }
-  .feed-entry.reaction { color: var(--amber); }
-  .feed-entry.reaction::before { content: '[REACT] '; color: var(--amber); font-weight: bold; }
-  .feed-entry.hype { color: var(--red); }
-  .feed-entry.hype::before { content: '[HYPE] '; color: var(--red); font-weight: bold; }
-  .feed-entry.debrief { color: var(--amber); background: rgba(255, 184, 0, 0.05); padding: 3px 6px; }
-  .feed-entry.debrief::before { content: '[DEBRIEF] '; color: var(--amber); font-weight: bold; }
-  .feed-entry.reply { color: var(--green); background: rgba(0, 255, 65, 0.05); padding: 3px 6px; border-left: 2px solid var(--green); }
-  .feed-entry.reply::before { content: '[HHR→COACH] '; color: var(--green); font-weight: bold; }
-  .feed-entry.coach { color: var(--green); background: rgba(0, 255, 65, 0.05); padding: 3px 6px; border-left: 2px solid var(--green); }
-  .feed-entry.coach::before { content: 'YOU: '; color: var(--green); font-weight: bold; }
-  .feed-entry.alert { color: var(--red); background: rgba(255, 45, 45, 0.1); padding: 3px 6px; font-weight: bold; border-left: 2px solid var(--red); }
-  .feed-entry.alert::before { content: '[ALERT] '; color: var(--red); font-weight: bold; }
+  .feed-entry.taunt { color: var(--text-primary); font-style: italic; }
 
-  /* ─── RATE LIMIT BANNER ─── */
-  .rate-limit-banner { display: none; background: linear-gradient(90deg, var(--bg-primary), var(--red-dim), var(--bg-primary)); padding: 5px 20px; text-align: center; font-size: 10px; font-weight: bold; color: var(--red); letter-spacing: 3px; text-transform: uppercase; border-bottom: 1px solid var(--red-dim); text-shadow: var(--red-glow); }
-  body.rate-limited .rate-limit-banner { display: block; }
-  @keyframes rate-limit-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
-  body.rate-limited .rate-limit-banner { animation: rate-limit-pulse 2s infinite; }
-  body.rate-limited .header { border-bottom-color: var(--red-dim); }
-  body.rate-limited .header h1 { color: var(--red); text-shadow: var(--red-glow); }
-
-  /* ─── COMMS (center bottom — coach message log) ─── */
+  /* --- COMMS AREA --- */
   .comms-area {
     grid-area: comms;
     background: var(--bg-panel);
-    border-right: 1px solid var(--border);
-    border-top: 1px solid var(--border);
+    border: 1px solid var(--border-dim);
+    border-top: 0;
+    padding: 8px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
-  .comms-area h3 { font-size: 9px; color: var(--amber); text-transform: uppercase; letter-spacing: 3px; padding: 8px 10px 6px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .comms-scroll { flex: 1; overflow-y: auto; padding: 4px 10px; }
+  .comms-area h3 { font-size: 9px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 6px; flex-shrink: 0; }
+  .comms-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; }
+  .comms-empty { color: var(--text-dim); font-size: 10px; padding: 8px; }
+  .comms-entry { font-size: 11px; line-height: 1.4; padding: 3px 0; border-bottom: 1px solid var(--border-dim); }
+  .comms-time { font-size: 8px; color: var(--text-label); margin-right: 4px; }
+  .comms-dir { font-size: 9px; font-weight: bold; margin-right: 4px; }
+  .comms-dir.out { color: var(--amber); }
+  .comms-dir.in { color: var(--green); }
+  .comms-text { color: var(--text-primary); }
 
-  .comms-entry {
-    padding: 4px 0;
-    font-size: 11px;
-    border-bottom: 1px solid var(--border-dim);
-    line-height: 1.4;
-  }
-
-  .comms-entry .comms-time { color: var(--text-label); font-size: 9px; }
-  .comms-entry .comms-dir { font-weight: bold; font-size: 9px; letter-spacing: 1px; }
-  .comms-entry .comms-dir.out { color: var(--amber); }
-  .comms-entry .comms-dir.in { color: var(--green); }
-  .comms-entry .comms-text { color: var(--text-primary); }
-
-  .comms-empty { color: var(--text-dim); font-size: 10px; text-align: center; padding: 20px; text-transform: uppercase; letter-spacing: 2px; }
-
-  /* ─── NOTES (right column, bottom half — big) ─── */
+  /* --- NOTES AREA --- */
   .notes-area {
     grid-area: notes;
     background: var(--bg-panel);
-    border-top: 1px solid var(--border);
-    overflow-y: auto;
-    padding: 8px 12px;
+    border: 1px solid var(--border-dim);
+    border-top: 0;
+    border-left: 0;
+    padding: 8px;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+  }
+  .notes-area h3 { font-size: 9px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 6px; flex-shrink: 0; }
+  .notes-content { font-size: 12px; line-height: 1.5; color: var(--text-primary); white-space: pre-wrap; word-break: break-word; flex: 1; overflow-y: auto; scrollbar-width: thin; }
+
+  /* --- COACH BOX --- */
+  .coach-box {
+    grid-area: coach;
+    background: var(--bg-panel);
+    border-top: 2px solid var(--green);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 8px;
+    box-shadow: 0 -4px 20px rgba(0, 255, 65, 0.1);
   }
 
-  .notes-area h3 { font-size: 9px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 6px; flex-shrink: 0; }
-  .notes-content { font-size: 12px; line-height: 1.5; color: var(--text-primary); white-space: pre-wrap; word-break: break-word; flex: 1; }
+  .coach-box label { font-size: 8px; color: var(--green); letter-spacing: 3px; text-transform: uppercase; flex-shrink: 0; }
+  .coach-prompt { color: var(--green); font-size: 14px; flex-shrink: 0; }
 
-  /* ─── COACH INPUT ─── */
-  .coach-box { grid-area: coach; background: var(--bg-panel); border-top: 1px solid var(--amber-dim); padding: 0 10px; display: flex; gap: 8px; align-items: center; height: 38px; }
-  .coach-box label { color: var(--amber); font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; white-space: nowrap; }
-  .coach-box .coach-prompt { color: var(--amber); font-size: 14px; font-weight: bold; }
-  .coach-box input { flex: 1; background: var(--bg-inset); border: 1px solid var(--border); color: var(--text-primary); font-family: 'Courier New', Consolas, monospace; font-size: 12px; padding: 5px 10px; outline: none; }
-  .coach-box input:focus { border-color: var(--amber); }
-  .coach-box button { background: transparent; color: var(--amber); border: 1px solid var(--amber-dim); font-family: 'Courier New', Consolas, monospace; font-size: 9px; font-weight: bold; padding: 5px 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
-  .coach-box button:hover { background: var(--amber); color: var(--bg-primary); }
+  .coach-box input {
+    flex: 1;
+    background: var(--bg-inset);
+    border: 1px solid var(--green-dim);
+    color: var(--text-primary);
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+  }
+  .coach-box input:focus { border-color: var(--green); box-shadow: 0 0 8px rgba(0, 255, 65, 0.2); }
+  .coach-box input::placeholder { color: var(--text-dim); }
 
-  .sent-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: var(--amber); color: var(--bg-primary); padding: 6px 16px; font-size: 11px; font-weight: bold; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; text-transform: uppercase; letter-spacing: 1px; }
-  .sent-toast.show { opacity: 1; }
+  .coach-box button {
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 9px;
+    font-weight: bold;
+    padding: 6px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .coach-box button:hover { background: var(--green); color: var(--bg-primary); }
 
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+  /* --- TOAST --- */
+  .sent-toast {
+    position: fixed;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-size: 10px;
+    padding: 6px 16px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 10000;
+  }
+  .sent-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* --- Combat pulse --- */
   @keyframes combat-pulse { 0%, 100% { box-shadow: inset 0 0 20px rgba(255, 45, 45, 0); } 50% { box-shadow: inset 0 0 20px rgba(255, 45, 45, 0.1); } }
   .blob-wrap.combat { animation: combat-pulse 2s infinite; }
 </style>
@@ -315,13 +357,19 @@
       <div class="readout"><span class="readout-label">FLUX</span><span class="readout-value" id="statFlux">--</span></div>
     </div>
     <div class="header-controls">
+      <div class="state-select-wrap">
+        <select id="agentStateSelect" class="state-select">
+          <option value="paused">PAUSED</option>
+          <option value="campaign">CAMPAIGN</option>
+          <option value="challengers">CHALLENGERS</option>
+          <option value="single">SINGLE</option>
+        </select>
+      </div>
       <button id="modeBtn" class="header-btn" title="Toggle casual/ranked" style="color:var(--green); border-color:var(--green-dim);">CASUAL</button>
-      <button id="pauseBtn" class="header-btn" title="Pause/unpause agent" style="color:var(--amber); border-color:var(--amber-dim);">PAUSE</button>
       <button id="restartBtn" class="header-btn" title="Restart agent container" style="color:var(--red); border-color:var(--red-dim);">RESTART</button>
     </div>
   </div>
 
-  <div class="debrief-banner" id="debriefBanner">DEBRIEF IN PROGRESS — USE COACH INPUT BELOW &#x25BC;</div>
   <div class="rate-limit-banner" id="rateLimitBanner">RATE LIMITED — AGENT PAUSED — MANUAL PLAY AVAILABLE</div>
 
   <div class="sidebar" id="sidebarArea">
@@ -353,22 +401,16 @@
   </div>
 
   <div class="feed-area">
-    <h3 style="display:flex; align-items:center; gap:8px;">
-      <span id="feedTitle">Live Commentary</span>
-      <button id="feedToggleBtn" class="header-btn" style="color:var(--green); border-color:var(--green-dim); font-size:8px; padding:2px 8px; margin-left:auto;" title="Toggle between commentary and game scratchpad">SCRATCHPAD</button>
-    </h3>
+    <h3>Activity Feed</h3>
     <div class="feed-scroll" id="feedScroll">
       <div id="feedList">
         <div class="feed-entry" style="color:var(--text-dim);">Waiting for data...</div>
       </div>
     </div>
-    <div class="feed-scroll" id="scratchpadScroll" style="display:none;">
-      <pre id="scratchpadContent" style="margin:0; font-size:11px; color:var(--text-primary); white-space:pre-wrap; word-wrap:break-word; padding:6px;"></pre>
-    </div>
   </div>
 
   <div class="comms-area">
-    <h3>Agent Comms</h3>
+    <h3>Coach Chat</h3>
     <div class="comms-scroll" id="commsScroll">
       <div id="commsList"><div class="comms-empty">No messages yet</div></div>
     </div>
@@ -405,11 +447,8 @@
   requestAnimationFrame(animate);
 
   let prevState = 'idle';
-  let lastCommentaryTime = null;
-  let commentaryQueue = [];
-  let initialLoadDone = false;
 
-  // ─── Unified feed ───
+  // --- Unified feed ---
   let allFeedEntries = [];
   let feedDedupSet = new Set();
 
@@ -443,7 +482,7 @@
     feedScroll.scrollTop = feedScroll.scrollHeight;
   }
 
-  // ─── Comms panel (coach messages) ───
+  // --- Comms panel (coach chat) ---
   let allCommsEntries = [];
   let commsDedupSet = new Set();
 
@@ -470,15 +509,16 @@
     });
     commsList.innerHTML = sorted.slice(-30).map(entry => {
       const t = entry.time ? new Date(entry.time).toLocaleTimeString() : '';
-      const dir = entry.type === 'coach' ? 'out' : 'in';
-      const label = entry.type === 'coach' ? 'YOU' : 'HHR';
+      const isCoach = entry.from === 'coach';
+      const dir = isCoach ? 'out' : 'in';
+      const label = isCoach ? 'YOU' : 'HHR';
       return `<div class="comms-entry"><span class="comms-time">${t}</span> <span class="comms-dir ${dir}">${label}:</span> <span class="comms-text">${escapeHtml(entry.text)}</span></div>`;
     }).join('');
     commsScroll.scrollTop = commsScroll.scrollHeight;
   }
 
-  // ─── W/L Graph ───
-  let wlHistory = []; // array of {win: bool}
+  // --- W/L Graph ---
+  let wlHistory = [];
 
   function drawWLGraph() {
     const canvas = document.getElementById('wlGraph');
@@ -505,7 +545,6 @@
     const last10 = wlHistory.slice(-10);
     const n = last10.length;
 
-    // Build cumulative W and L arrays
     let cumW = [], cumL = [], cw = 0, cl = 0;
     for (let i = 0; i < n; i++) {
       if (last10[i].win) cw++; else cl++;
@@ -514,7 +553,6 @@
     }
     const maxY = Math.max(cw, cl, 1);
 
-    // Chart area with padding for labels
     const padL = 18, padR = 6, padT = 8, padB = 16;
     const cw2 = w - padL - padR;
     const ch = h - padT - padB;
@@ -522,7 +560,6 @@
     function xPos(i) { return padL + (n === 1 ? cw2 / 2 : i * cw2 / (n - 1)); }
     function yPos(v) { return padT + ch - (v / maxY) * ch; }
 
-    // Grid lines
     ctx.strokeStyle = '#1a1e28';
     ctx.lineWidth = 0.5;
     for (let v = 0; v <= maxY; v++) {
@@ -530,7 +567,6 @@
       ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
     }
 
-    // Y axis labels
     ctx.fillStyle = '#4a4e58';
     ctx.font = '7px "Courier New", monospace';
     ctx.textAlign = 'right';
@@ -538,22 +574,18 @@
       ctx.fillText(v, padL - 3, yPos(v) + 3);
     }
 
-    // X axis labels (game numbers)
     ctx.textAlign = 'center';
     const startNum = Math.max(1, wlHistory.length - 9);
     for (let i = 0; i < n; i++) {
       ctx.fillText(startNum + i, xPos(i), h - 2);
     }
 
-    // Draw line helper
     function drawLine(points, color, glowColor) {
       if (points.length < 2) {
-        // Single point — draw a dot
         ctx.fillStyle = color;
         ctx.beginPath(); ctx.arc(xPos(0), yPos(points[0]), 3, 0, Math.PI * 2); ctx.fill();
         return;
       }
-      // Glow
       ctx.strokeStyle = glowColor;
       ctx.lineWidth = 3;
       ctx.globalAlpha = 0.3;
@@ -565,7 +597,6 @@
       ctx.stroke();
       ctx.globalAlpha = 1;
 
-      // Line
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -575,7 +606,6 @@
       }
       ctx.stroke();
 
-      // Dots
       ctx.fillStyle = color;
       for (let i = 0; i < points.length; i++) {
         ctx.beginPath(); ctx.arc(xPos(i), yPos(points[i]), 2, 0, Math.PI * 2); ctx.fill();
@@ -585,7 +615,6 @@
     drawLine(cumW, '#00ff41', '#00ff41');
     drawLine(cumL, '#ff2d2d', '#ff2d2d');
 
-    // Legend
     ctx.font = '7px "Courier New", monospace';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#00ff41'; ctx.fillText('W:' + cw, padL + 2, padT + 6);
@@ -603,7 +632,7 @@
 
   window.addEventListener('resize', () => { setTimeout(drawWLGraph, 100); });
 
-  // ─── Polling ───
+  // --- Polling ---
   async function pollStatus() {
     try {
       const res = await fetch('/api/status');
@@ -628,6 +657,17 @@
         if (prevState === 'combat' && data.state === 'idle') pollFeedForResult();
         blob.setState(data.state);
         prevState = data.state;
+      }
+
+      // Sync agent state select
+      const sel = document.getElementById('agentStateSelect');
+      if (data.agentState && sel.value !== data.agentState) {
+        sel.value = data.agentState;
+      }
+      // Sync queue mode
+      if (data.queueMode) {
+        currentMode = data.queueMode;
+        updateModeBtn();
       }
     } catch (e) { console.error('Status poll failed:', e); }
   }
@@ -655,88 +695,6 @@
     } catch {}
   }
 
-  async function pollCommentary() {
-    try {
-      const url = lastCommentaryTime
-        ? `/api/commentary?since=${encodeURIComponent(lastCommentaryTime)}`
-        : '/api/commentary';
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!data.entries || data.entries.length === 0) return;
-
-      let anyNew = false;
-      for (const entry of data.entries) {
-        if (entry.time) lastCommentaryTime = entry.time;
-        const isNew = addFeedEntry(entry);
-        if (!isNew) continue;
-        anyNew = true;
-        if (entry.type === 'debrief') {
-          setDebriefMode(true); pollNotes();
-          addCommsEntry({ type: 'agent', text: entry.text, time: entry.time });
-        }
-        if (entry.type === 'alert') {
-          addCommsEntry({ type: 'agent', text: entry.text, time: entry.time });
-        }
-        if (entry.type === 'reply') {
-          addCommsEntry({ type: 'agent', text: entry.text, time: entry.time });
-        }
-        if (initialLoadDone) commentaryQueue.push(entry.text);
-      }
-      if (!initialLoadDone) initialLoadDone = true;
-      if (anyNew) { renderFeed(); renderComms(); updateWLFromFeed(); }
-    } catch (e) { console.error('Commentary poll failed:', e); }
-  }
-
-  // --- Scratchpad toggle ---
-  let feedMode = 'commentary'; // 'commentary' or 'scratchpad'
-  const feedToggleBtn = document.getElementById('feedToggleBtn');
-  const feedTitle = document.getElementById('feedTitle');
-  const feedScrollEl = document.getElementById('feedScroll');
-  const scratchpadScrollEl = document.getElementById('scratchpadScroll');
-  const scratchpadContent = document.getElementById('scratchpadContent');
-
-  feedToggleBtn.addEventListener('click', () => {
-    if (feedMode === 'commentary') {
-      feedMode = 'scratchpad';
-      feedToggleBtn.textContent = 'COMMENTARY';
-      feedTitle.textContent = 'Game Scratchpad';
-      feedScrollEl.style.display = 'none';
-      scratchpadScrollEl.style.display = 'block';
-      pollScratchpad();
-    } else {
-      feedMode = 'commentary';
-      feedToggleBtn.textContent = 'SCRATCHPAD';
-      feedTitle.textContent = 'Live Commentary';
-      feedScrollEl.style.display = 'block';
-      scratchpadScrollEl.style.display = 'none';
-    }
-  });
-
-  async function pollScratchpad() {
-    if (feedMode !== 'scratchpad') return;
-    try {
-      const res = await fetch('/api/scratchpad');
-      const data = await res.json();
-      if (data.content) {
-        scratchpadContent.textContent = data.content;
-        scratchpadScrollEl.scrollTop = scratchpadScrollEl.scrollHeight;
-      } else {
-        scratchpadContent.textContent = data.active ? '(no notes yet this game)' : '(no active game)';
-      }
-    } catch (e) { console.error('Scratchpad poll failed:', e); }
-  }
-  setInterval(pollScratchpad, 3000);
-
-  let commentaryDripping = false;
-  function dripCommentary() {
-    if (commentaryDripping || commentaryQueue.length === 0) return;
-    commentaryDripping = true;
-    const text = commentaryQueue.shift();
-    blob.showTaunt(text.length > 60 ? text.substring(0, 57) + '...' : text);
-    setTimeout(() => { commentaryDripping = false; dripCommentary(); }, 5000);
-  }
-  setInterval(dripCommentary, 1000);
-
   async function pollNotes() {
     try {
       const res = await fetch('/api/notes');
@@ -745,13 +703,27 @@
     } catch (e) { console.error('Strategy poll failed:', e); }
   }
 
+  async function pollCoachChat() {
+    try {
+      const res = await fetch('/api/coach');
+      const data = await res.json();
+      if (data.history && data.history.length > 0) {
+        let anyNew = false;
+        for (const entry of data.history) {
+          if (addCommsEntry(entry)) anyNew = true;
+        }
+        if (anyNew) renderComms();
+      }
+    } catch (e) { console.error('Coach poll failed:', e); }
+  }
+
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
 
-  // ─── Match / Queue / BDA ───
+  // --- Match / Queue ---
   let matchState = 'idle';
   let queueStartTime = null;
   let matchPollTimer = null;
@@ -820,27 +792,11 @@
         const elapsed = Math.floor((Date.now() - queueStartTime) / 1000);
         const mins = Math.floor(elapsed / 60);
         const secs = elapsed % 60;
-        hero.innerHTML = `<div class="queue-display"><div class="searching">Searching for opponent...</div><div class="timer">${mins}:${String(secs).padStart(2, '0')}</div>${data.lastResult ? `<div style="margin-top:16px;color:var(--text-dim);font-size:10px;">Last: ${escapeHtml(data.lastResult)}</div>` : ''}</div>`;
+        hero.innerHTML = `<div class="queue-display"><div class="searching">Searching for opponent...</div><div class="timer">${mins}:${String(secs).padStart(2, '0')}</div></div>`;
       } else {
         matchState = 'idle';
         queueStartTime = null;
-        if (data.lastDebrief && data.lastDebrief.length > 0) {
-          const lines = data.lastDebrief;
-          const labels = ['Result', 'Pivot', 'Deck', 'Lesson'];
-          let bdaHtml = '';
-          for (let i = 0; i < lines.length; i++) {
-            const label = labels[i] || '';
-            const isResult = i === 0;
-            const isLoss = isResult && /LOSS/i.test(lines[i]);
-            if (isResult) bdaHtml += `<div class="bda-line"><span class="bda-result${isLoss ? ' loss' : ''}">${escapeHtml(lines[i])}</span></div>`;
-            else bdaHtml += `<div class="bda-line">${label ? `<span class="bda-label">${label}</span>` : ''}${escapeHtml(lines[i])}</div>`;
-          }
-          hero.innerHTML = `<div class="bda-card"><h2>Last Match</h2>${bdaHtml}</div>`;
-        } else if (data.lastResult) {
-          hero.innerHTML = `<div class="bda-card"><h2>Last Match</h2><div class="bda-line"><span class="bda-result">${escapeHtml(data.lastResult)}</span></div></div>`;
-        } else {
-          hero.innerHTML = '<div class="idle-hint">No recent matches</div>';
-        }
+        hero.innerHTML = '<div class="idle-hint">No active match</div>';
       }
     } catch (e) { console.error('Match poll failed:', e); }
     clearTimeout(matchPollTimer);
@@ -858,35 +814,12 @@
     } catch (e) { console.error('Campaign poll failed:', e); }
   }
 
-  // ─── Start polling ───
-  pollStatus(); pollFeed(); pollNotes(); pollMatch(); pollCampaign(); pollCommentary();
+  // --- Start polling ---
+  pollStatus(); pollFeed(); pollNotes(); pollMatch(); pollCampaign(); pollCoachChat();
 
-  // ─── Coach input ───
+  // --- Coach input ---
   const coachInput = document.getElementById('coachInput');
   const coachSend = document.getElementById('coachSend');
-  let inDebriefMode = false;
-
-  function setDebriefMode(active) {
-    if (active === inDebriefMode) return;
-    inDebriefMode = active;
-    document.body.classList.toggle('debrief-mode', active);
-    if (active) {
-      coachInput.placeholder = 'Coach HHR on this match — awaiting your feedback...';
-      const badge = document.getElementById('stateBadge');
-      badge.className = 'state-badge state-debrief';
-      badge.textContent = 'DEBRIEF';
-    } else {
-      coachInput.placeholder = 'Send feedback to the agent...';
-    }
-  }
-
-  async function checkDebrief() {
-    try {
-      const res = await fetch('/api/debrief-status');
-      const data = await res.json();
-      setDebriefMode(data.debriefPending);
-    } catch {}
-  }
 
   async function sendCoachFeedback() {
     const msg = coachInput.value.trim();
@@ -900,15 +833,11 @@
         body: JSON.stringify({ message: msg })
       });
       coachInput.value = '';
-      const entry = { type: 'coach', text: msg, time: new Date().toISOString() };
-      addFeedEntry(entry);
-      addCommsEntry(entry);
-      renderFeed();
+      addCommsEntry({ from: 'coach', text: msg, time: new Date().toISOString() });
       renderComms();
       const toast = document.getElementById('sentToast');
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 2500);
-      setDebriefMode(false);
     } catch (e) {
       console.error('Failed to send feedback:', e);
     } finally {
@@ -920,57 +849,39 @@
   coachSend.addEventListener('click', sendCoachFeedback);
   coachInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendCoachFeedback(); });
 
-  async function loadCoachHistory() {
+  // --- Agent state control ---
+  const agentStateSelect = document.getElementById('agentStateSelect');
+
+  async function loadAgentState() {
     try {
-      const res = await fetch('/api/coach-messages');
+      const res = await fetch('/api/agent-state');
       const data = await res.json();
-      if (data.messages && data.messages.length > 0) {
-        for (const msg of data.messages) {
-          addFeedEntry(msg);
-          addCommsEntry(msg);
-        }
-        renderFeed();
-        renderComms();
-      }
+      agentStateSelect.value = data.agentState || 'paused';
+      currentMode = data.queueMode || 'casual';
+      updateModeBtn();
     } catch {}
   }
 
-  // ─── Pause ───
-  const pauseBtn = document.getElementById('pauseBtn');
-  let isPaused = false;
-
-  async function checkPauseStatus() {
-    try { const res = await fetch('/api/pause-status'); const data = await res.json(); isPaused = data.paused; updatePauseBtn(); } catch {}
-  }
-
-  function updatePauseBtn() {
-    if (isPaused) { pauseBtn.textContent = 'UNPAUSE'; pauseBtn.style.color = 'var(--green)'; pauseBtn.style.borderColor = 'var(--green-dim)'; }
-    else { pauseBtn.textContent = 'PAUSE'; pauseBtn.style.color = 'var(--amber)'; pauseBtn.style.borderColor = 'var(--amber-dim)'; }
-  }
-
-  pauseBtn.addEventListener('click', async () => {
-    pauseBtn.disabled = true;
+  agentStateSelect.addEventListener('change', async () => {
+    const newState = agentStateSelect.value;
+    agentStateSelect.disabled = true;
     try {
-      await fetch(isPaused ? '/api/unpause' : '/api/pause', { method: 'POST' });
-      isPaused = !isPaused;
-      updatePauseBtn();
-      const entry = { type: 'coach', text: isPaused ? 'Agent paused — will stop after current match' : 'Agent unpaused — will queue next match', time: new Date().toISOString() };
-      addFeedEntry(entry); addCommsEntry(entry);
-      renderFeed(); renderComms();
-    } catch (e) { console.error('Pause toggle failed:', e); }
-    finally { pauseBtn.disabled = false; }
+      await fetch('/api/agent-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentState: newState })
+      });
+      addCommsEntry({ from: 'coach', text: `Agent state: ${newState.toUpperCase()}`, time: new Date().toISOString() });
+      renderComms();
+    } catch (e) { console.error('State change failed:', e); }
+    finally { agentStateSelect.disabled = false; }
   });
 
-  checkPauseStatus();
-  setInterval(checkPauseStatus, 10000);
+  loadAgentState();
 
-  // ─── Game mode ───
+  // --- Queue mode ---
   const modeBtn = document.getElementById('modeBtn');
   let currentMode = 'casual';
-
-  async function checkGameMode() {
-    try { const res = await fetch('/api/game-mode'); const data = await res.json(); currentMode = data.mode; updateModeBtn(); } catch {}
-  }
 
   function updateModeBtn() {
     if (currentMode === 'ranked') { modeBtn.textContent = 'RANKED'; modeBtn.style.color = 'var(--red)'; modeBtn.style.borderColor = 'var(--red-dim)'; }
@@ -979,22 +890,42 @@
 
   modeBtn.addEventListener('click', async () => {
     const newMode = currentMode === 'casual' ? 'ranked' : 'casual';
-    if (newMode === 'ranked' && !confirm('Switch to RANKED? This will affect Elo.')) return;
-    modeBtn.disabled = true;
-    try {
-      await fetch('/api/set-mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: newMode }) });
-      currentMode = newMode;
-      updateModeBtn();
-      const entry = { type: 'coach', text: `Mode switched to ${newMode.toUpperCase()}`, time: new Date().toISOString() };
-      addFeedEntry(entry); addCommsEntry(entry);
-      renderFeed(); renderComms();
-    } catch (e) { console.error('Mode toggle failed:', e); }
-    finally { modeBtn.disabled = false; }
+    if (newMode === 'ranked') {
+      modeBtn.textContent = 'RANKED?';
+      modeBtn.style.color = 'var(--amber)';
+      modeBtn.style.borderColor = 'var(--amber)';
+      const confirmClick = () => {
+        modeBtn.removeEventListener('click', confirmClick);
+        clearTimeout(revertTimer);
+        doModeSwitch('ranked');
+      };
+      const revertTimer = setTimeout(() => {
+        modeBtn.removeEventListener('click', confirmClick);
+        updateModeBtn();
+      }, 3000);
+      modeBtn.addEventListener('click', confirmClick, { once: true });
+      return;
+    }
+    doModeSwitch(newMode);
   });
 
-  checkGameMode();
+  async function doModeSwitch(mode) {
+    modeBtn.disabled = true;
+    try {
+      await fetch('/api/queue-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode })
+      });
+      currentMode = mode;
+      updateModeBtn();
+      addCommsEntry({ from: 'coach', text: `Queue mode: ${mode.toUpperCase()}`, time: new Date().toISOString() });
+      renderComms();
+    } catch (e) { console.error('Mode toggle failed:', e); }
+    finally { modeBtn.disabled = false; }
+  }
 
-  // ─── Restart ───
+  // --- Restart ---
   const restartBtn = document.getElementById('restartBtn');
   restartBtn.addEventListener('click', async () => {
     if (!confirm('Restart the agent container?')) return;
@@ -1014,7 +945,7 @@
     }
   });
 
-  // ─── Sessions ───
+  // --- Sessions ---
   async function pollSessions() {
     try {
       const res = await fetch('/api/sessions');
@@ -1027,34 +958,26 @@
     } catch {}
   }
 
-  // ─── Rate limit polling ───
+  // --- Rate limit polling ---
   async function pollRateLimit() {
     try {
       const res = await fetch('/api/rate-limit-status');
       const data = await res.json();
-      if (data.limited) {
-        document.body.classList.add('rate-limited');
-      } else {
-        document.body.classList.remove('rate-limited');
-      }
+      document.body.classList.toggle('rate-limited', !!data.limited);
     } catch {}
   }
 
-  loadCoachHistory();
-  checkDebrief();
   pollSessions();
   pollRateLimit();
 
   setInterval(pollStatus, 5000);
   setInterval(pollFeed, 5000);
-  setInterval(pollCommentary, 3000);
   setInterval(pollNotes, 10000);
-  setInterval(checkDebrief, 3000);
+  setInterval(pollCoachChat, 5000);
   setInterval(pollSessions, 5000);
   setInterval(pollCampaign, 10000);
   setInterval(pollRateLimit, 10000);
 
-  // Initial graph draw after a short delay
   setTimeout(drawWLGraph, 500);
 })();
 </script>
